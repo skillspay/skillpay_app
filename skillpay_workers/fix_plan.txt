@@ -1,0 +1,2 @@
+1. Update supabase_auth_service.dart to use auth.signUp with data metadata instead of direct insert.
+2. Provide the SQL Trigger script for the user to run in Supabase.

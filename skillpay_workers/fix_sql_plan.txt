@@ -1,0 +1,2 @@
+1. The user might have a table named `worker_profiles` instead of `workers_profile`.
+2. Generate an SQL script that checks for the existence of either table name and applies the correct one, or just instruct the user to check their exact table name.

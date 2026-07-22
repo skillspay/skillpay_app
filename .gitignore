@@ -1,0 +1,77 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+
+# Node.js
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Next.js
+.next
+out
+build
+.vercel
+
+# NestJS / TypeScript
+dist
+coverage
+
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.pub-cache/
+.pub/
+/build/
+*.DS_Store
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# iOS / Android (Flutter)
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+project.xcworkspace
+**/android/local.properties
+**/android/key.properties
+**/.gradle/
+**/captures/
+*.apk
+*.aab
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
