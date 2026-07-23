@@ -9,9 +9,10 @@ export class StorageService {
   private readonly serviceRoleKey: string;
 
   constructor(private readonly config: ConfigService) {
-    const rawUrl = this.config.get<string>('supabase.url')!;
-    this.supabaseUrl = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
-    this.serviceRoleKey = this.config.get<string>('supabase.serviceRoleKey')!;
+    const rawUrl = this.config.get<string>('supabase.url') ?? '';
+    // Strip trailing slashes AND trailing dots that can cause TenantNotFound in Supabase API gateway
+    this.supabaseUrl = rawUrl.replace(/[\/\.]+$/, '');
+    this.serviceRoleKey = this.config.get<string>('supabase.serviceRoleKey') ?? '';
   }
 
   /**
