@@ -23,6 +23,22 @@ class ApiClient {
   String? get _token =>
       Supabase.instance.client.auth.currentSession?.accessToken;
 
+  /// Returns the current Supabase JWT.
+  /// Waits up to 3 seconds for the session to be restored from storage
+  /// before giving up — fixes "No token" errors at app startup.
+  Future<String?> _getToken() async {
+    var session = Supabase.instance.client.auth.currentSession;
+    if (session != null) return session.accessToken;
+
+    // Session may still be loading — wait briefly
+    for (var i = 0; i < 6; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      session = Supabase.instance.client.auth.currentSession;
+      if (session != null) return session.accessToken;
+    }
+    return null;
+  }
+
   Map<String, String> _headers({bool multipart = false}) {
     final headers = <String, String>{
       HttpHeaders.acceptHeader: 'application/json',
@@ -31,6 +47,20 @@ class ApiClient {
       headers[HttpHeaders.contentTypeHeader] = 'application/json';
     }
     final token = _token;
+    if (token != null) {
+      headers[HttpHeaders.authorizationHeader] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  Future<Map<String, String>> _asyncHeaders({bool multipart = false}) async {
+    final headers = <String, String>{
+      HttpHeaders.acceptHeader: 'application/json',
+    };
+    if (!multipart) {
+      headers[HttpHeaders.contentTypeHeader] = 'application/json';
+    }
+    final token = await _getToken();
     if (token != null) {
       headers[HttpHeaders.authorizationHeader] = 'Bearer $token';
     }
@@ -53,14 +83,14 @@ class ApiClient {
   // ─── Core request methods ────────────────────────────────────────────────
 
   Future<dynamic> get(String path, {Map<String, dynamic>? query}) async {
-    final response = await http.get(_uri(path, query), headers: _headers());
+    final response = await http.get(_uri(path, query), headers: await _asyncHeaders());
     return _handleResponse(response);
   }
 
   Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
     final response = await http.post(
       _uri(path),
-      headers: _headers(),
+      headers: await _asyncHeaders(),
       body: body != null ? jsonEncode(body) : null,
     );
     return _handleResponse(response);
@@ -69,7 +99,7 @@ class ApiClient {
   Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
     final response = await http.patch(
       _uri(path),
-      headers: _headers(),
+      headers: await _asyncHeaders(),
       body: body != null ? jsonEncode(body) : null,
     );
     return _handleResponse(response);
@@ -78,19 +108,17 @@ class ApiClient {
   Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
     final response = await http.put(
       _uri(path),
-      headers: _headers(),
+      headers: await _asyncHeaders(),
       body: body != null ? jsonEncode(body) : null,
     );
     return _handleResponse(response);
   }
 
   Future<dynamic> delete(String path) async {
-    final response =
-        await http.delete(_uri(path), headers: _headers());
+    final response = await http.delete(_uri(path), headers: await _asyncHeaders());
     return _handleResponse(response);
   }
 
-  /// Multipart upload — for sending files to NestJS storage endpoints.
   Future<dynamic> uploadFile(
     String path, {
     required File file,
@@ -99,7 +127,7 @@ class ApiClient {
   }) async {
     final request =
         http.MultipartRequest('POST', _uri(path))
-          ..headers.addAll(_headers(multipart: true))
+          ..headers.addAll(await _asyncHeaders(multipart: true))
           ..files.add(await http.MultipartFile.fromPath(fieldName, file.path));
     if (fields != null) request.fields.addAll(fields);
     final streamed = await request.send();
