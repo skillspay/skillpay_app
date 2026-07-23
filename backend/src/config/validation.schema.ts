@@ -10,6 +10,7 @@ export const validationSchema = Joi.object({
 
   // Database
   DATABASE_URL: Joi.string().required(),
+  DIRECT_URL: Joi.string().optional(),
 
   // Supabase — keep required but allow empty string so app starts and shows config error in logs
   SUPABASE_URL: Joi.string().uri().required(),
