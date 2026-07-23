@@ -7,6 +7,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,6 +16,9 @@ import {
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
+import { Request } from 'express';
+import { createClient } from '@supabase/supabase-js';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto, UpdateFcmTokenDto } from './dto/register.dto';
 import { SupabaseAuthGuard } from './guards/supabase-auth.guard';
@@ -26,26 +31,41 @@ import { AuthenticatedUser } from '../../common/interfaces/request-with-user.int
 @UseGuards(SupabaseAuthGuard)
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly config: ConfigService,
+  ) {}
 
   /**
    * POST /auth/register
-   * Called after Supabase sign-up. Creates the DB user row.
-   * Still requires a valid Supabase JWT (user is signed in after signUp).
+   *
+   * Marked @Public() — bypasses the DB user lookup in SupabaseAuthGuard
+   * because the user row doesn't exist yet on first call.
+   * We still validate the Supabase JWT manually to get the supabaseUserId.
+   * This endpoint is idempotent: safe to call on every login.
    */
   @Post('register')
-  @ApiOperation({ summary: 'Register user in DB after Supabase sign-up' })
-  @ApiResponse({ status: 201, description: 'User registered successfully' })
-  async register(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: RegisterDto,
-  ) {
-    return this.authService.register(user.supabaseUserId, dto);
+  @Public()
+  @ApiOperation({ summary: 'Upsert user in DB (called on first login after email confirmation)' })
+  @ApiResponse({ status: 201, description: 'User registered/found' })
+  async register(@Req() req: Request, @Body() dto: RegisterDto) {
+    // Manually validate the JWT since guard skips DB lookup for @Public routes
+    const token = this.extractToken(req);
+    if (!token) throw new UnauthorizedException('No authorization token provided');
+
+    const supabase = createClient(
+      this.config.get<string>('supabase.url')!,
+      this.config.get<string>('supabase.serviceRoleKey')!,
+    );
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user) throw new UnauthorizedException('Invalid or expired token');
+
+    return this.authService.register(data.user.id, dto);
   }
 
   /**
    * POST /auth/login
-   * Called on every sign-in. Updates last_login.
+   * Updates last_login. Requires a valid session (user must exist in DB).
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -78,5 +98,14 @@ export class AuthController {
   ) {
     await this.authService.updateFcmToken(user.id, dto);
     return { message: 'FCM token updated' };
+  }
+
+  // ─── Helper ──────────────────────────────────────────────────────────────
+
+  private extractToken(req: Request): string | null {
+    const auth = req.headers['authorization'];
+    if (!auth) return null;
+    const [scheme, token] = auth.split(' ');
+    return scheme?.toLowerCase() === 'bearer' ? token : null;
   }
 }
