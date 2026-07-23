@@ -55,10 +55,11 @@ export class AuthService {
 
   /**
    * Called by Flutter app on every sign-in.
-   * Updates last_login timestamp.
+   * Updates last_login timestamp. Safe to call even if user row
+   * doesn't exist yet (no-op in that case).
    */
   async login(supabaseUserId: string): Promise<void> {
-    await this.prisma.user.update({
+    await this.prisma.user.updateMany({
       where: { supabaseUserId },
       data: { lastLogin: new Date() },
     });

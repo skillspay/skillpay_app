@@ -12,10 +12,24 @@ import { AuthenticatedUser } from '../../common/interfaces/request-with-user.int
 export class WalletController {
   constructor(private readonly walletService: WalletService) {}
 
+  // Flutter calls GET /wallet/me
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user wallet' })
+  getWalletMe(@CurrentUser() user: AuthenticatedUser) {
+    return this.walletService.getWallet(user.id);
+  }
+
+  // Also support GET /wallet for admin/web
   @Get()
-  @ApiOperation({ summary: 'Get current user wallet balance and transaction logs' })
+  @ApiOperation({ summary: 'Get current user wallet (alias)' })
   getWallet(@CurrentUser() user: AuthenticatedUser) {
     return this.walletService.getWallet(user.id);
+  }
+
+  @Get('transactions')
+  @ApiOperation({ summary: 'Get wallet transactions' })
+  getTransactions(@CurrentUser() user: AuthenticatedUser) {
+    return this.walletService.getTransactions(user.id);
   }
 
   @Post('withdraw')

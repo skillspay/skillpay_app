@@ -21,6 +21,14 @@ export class WalletService {
     return wallet;
   }
 
+  async getTransactions(userId: string) {
+    const wallet = await this.getWallet(userId);
+    return this.prisma.walletTransaction.findMany({
+      where: { walletId: wallet.id },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async withdraw(userId: string, amount: number) {
     const wallet = await this.getWallet(userId);
     if (Number(wallet.balance) < amount) {
