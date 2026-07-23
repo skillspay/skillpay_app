@@ -25,7 +25,7 @@ class _JobsScreenState extends State<JobsScreen> {
 
   void _refreshJobs() {
     setState(() {
-      _jobsFuture = _jobsService.fetchCustomerJobs();
+      _jobsFuture = _jobsService.fetchMyJobs();
     });
   }
 
@@ -167,11 +167,11 @@ class _JobsScreenState extends State<JobsScreen> {
           child: JobCard(
             title: job.title,
             budget: '\$${job.budget.toStringAsFixed(2)}',
-            tags: [job.category],
-            location: job.location,
+            tags: [job.categoryName],
+            location: job.address,
             description: job.description,
-            jobId: job.id.split('-').first.toUpperCase(), // Mocking short ID
-            proposalCount: job.proposalCount,
+            jobId: job.id.split('-').first.toUpperCase(),
+            proposalCount: job.applicationCount,
             status: job.status,
           ),
         );

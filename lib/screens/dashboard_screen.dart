@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/widgets/artisan_card.dart';
 import 'package:skillpay/services/jobs_service.dart';
@@ -303,11 +302,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: snapshot.data!.map((worker) => Padding(
                             padding: const EdgeInsets.only(right: 16),
                             child: ArtisanCard(
-                              // fallback to local asset if no URL
-                              imagePath: worker.profileImageUrl ?? 'assets/images/avatar_placeholder.png', 
+                              imagePath: worker.profileImageUrl ?? 'assets/images/avatar_placeholder.png',
                               name: worker.fullName,
-                              profession: worker.profession,
-                              jobsCompleted: worker.jobsCompleted,
+                              profession: worker.categories.isNotEmpty
+                                  ? worker.categories.first
+                                  : worker.businessName ?? 'Artisan',
+                              jobsCompleted: worker.completedJobs,
                               rating: worker.averageRating,
                             ),
                           )).toList(),
@@ -395,8 +395,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: previewJobs.map((job) {
                           return _buildHistoryItem(
                             id: job.id.split('-').first.toUpperCase(),
-                            artisan: job.artisanId != null ? 'Assigned' : 'Searching',
-                            trade: job.category,
+                            artisan: job.isAccepted || job.isInProgress || job.isCompleted
+                                ? 'Assigned'
+                                : 'Searching',
+                            trade: job.categoryName,
                             status: job.status.capitalize(),
                           );
                         }).toList(),

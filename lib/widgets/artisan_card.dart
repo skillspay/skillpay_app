@@ -5,7 +5,7 @@ import 'package:skillpay/theme/app_theme.dart';
 class ArtisanCard extends StatelessWidget {
   final String imagePath;
   final String name;
-  final String profession;
+  final String profession; // first category name or business name
   final int jobsCompleted;
   final double rating;
 

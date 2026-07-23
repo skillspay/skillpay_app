@@ -18,12 +18,12 @@ class _AddressScreenState extends State<AddressScreen> {
   @override
   void initState() {
     super.initState();
-    _addressesFuture = _service.fetchSavedAddresses();
+    _addressesFuture = _service.fetchAddresses();
   }
 
   void _refresh() {
     setState(() {
-      _addressesFuture = _service.fetchSavedAddresses();
+      _addressesFuture = _service.fetchAddresses();
     });
   }
 

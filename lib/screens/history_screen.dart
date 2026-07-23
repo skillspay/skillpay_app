@@ -21,7 +21,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _jobsFuture = _jobsService.fetchCustomerJobs();
+    _jobsFuture = _jobsService.fetchMyJobs();
   }
 
   @override
@@ -143,8 +143,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _buildHistoryCard(JobModel job) {
     // Determine mapping based on mockup
     final String shortId = job.id.split('-').first.toUpperCase();
-    final String artisanName = job.artisanId != null ? 'Assigned' : 'Searching';
-    final String tradeName = job.category;
+    final String artisanName = job.isAccepted || job.isInProgress || job.isCompleted
+        ? 'Assigned'
+        : 'Searching';
+    final String tradeName = job.categoryName;
     final String status = job.status.capitalize();
     
     // Status color mapping based on mockups

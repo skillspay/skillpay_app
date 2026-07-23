@@ -38,7 +38,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   Future<void> _loadSavedLocations() async {
     try {
-      final addresses = await CustomerProfileService().fetchSavedAddresses();
+      final addresses = await CustomerProfileService().fetchAddresses();
       if (addresses.isNotEmpty && mounted) {
         setState(() {
           // Build display strings from structured address data

@@ -21,7 +21,9 @@ class _HistoryJobDetailsScreenState extends State<HistoryJobDetailsScreen> {
   Widget build(BuildContext context) {
     // Generate derived values for UI
     final String shortId = widget.job.id.split('-').first.toUpperCase();
-    final String artisanName = widget.job.artisanId != null ? 'Assigned' : 'Searching';
+    final String artisanName = widget.job.isAccepted || widget.job.isInProgress || widget.job.isCompleted
+        ? 'Assigned'
+        : 'Searching';
     final String createdDate = "${widget.job.createdAt.month}/${widget.job.createdAt.day}/${widget.job.createdAt.year}";
     final String status = widget.job.status.capitalize();
     
@@ -215,10 +217,10 @@ class _HistoryJobDetailsScreenState extends State<HistoryJobDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDetailRow('Service Type', widget.job.category),
-        _buildDetailRow('Job Timeline', widget.job.timeline),
-        _buildDetailRow('Urgency Type', 'High priority'), // Hardcoded in mockup, could be mapped or added later
-        _buildDetailRow('Location', widget.job.location),
+        _buildDetailRow('Service Type', widget.job.categoryName),
+        _buildDetailRow('Job Timeline', widget.job.preferredDate ?? 'Flexible'),
+        _buildDetailRow('Urgency Type', 'High priority'),
+        _buildDetailRow('Location', widget.job.address),
         _buildDetailRow('File Upload', 'None'),
         _buildDetailRow('Additional Details', widget.job.description),
         

@@ -28,7 +28,7 @@ class _HireArtisanScreenState extends State<HireArtisanScreen> {
   @override
   void initState() {
     super.initState();
-    _jobsFuture = _jobsService.fetchCustomerJobs();
+    _jobsFuture = _jobsService.fetchMyJobs();
   }
 
   @override
@@ -113,7 +113,7 @@ class _HireArtisanScreenState extends State<HireArtisanScreen> {
                         if (result == true) {
                           setState(() {
                             _selectedJob = null;
-                            _jobsFuture = _jobsService.fetchCustomerJobs();
+                            _jobsFuture = _jobsService.fetchMyJobs();
                           });
                         }
                       },
