@@ -1,0 +1,27 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap");
+
+.nav-link {
+  color: gray;
+  cursor: pointer;
+}
+.nav-link:hover {
+  color: white;
+}
+
+body {
+  font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 20s linear infinite;
+}
