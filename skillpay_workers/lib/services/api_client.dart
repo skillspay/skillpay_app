@@ -120,6 +120,13 @@ class ApiClient {
           message;
     } catch (_) {}
 
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      // Clear the stale local session so the user is forced back to login on next reload
+      try {
+        Supabase.instance.client.auth.signOut();
+      } catch (_) {}
+    }
+
     throw ApiException(message: message, statusCode: response.statusCode);
   }
 }
