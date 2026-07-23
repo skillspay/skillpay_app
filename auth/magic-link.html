@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic Link — Skillpay</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Outfit', sans-serif; background: #f9f9f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+    .card { background: white; border-radius: 20px; padding: 40px 32px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
+    .logo { width: 64px; height: 64px; background: #FFC107; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-weight: 700; font-size: 20px; color: white; }
+    .icon { font-size: 56px; margin-bottom: 16px; }
+    h1 { font-size: 22px; font-weight: 700; color: #111; margin-bottom: 10px; }
+    p { color: #666; font-size: 14px; line-height: 1.7; margin-bottom: 24px; }
+    .btn { display: block; width: 100%; padding: 14px; background: #FFC107; color: #111; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; text-decoration: none; transition: background 0.2s; margin-bottom: 12px; }
+    .btn:hover { background: #e6ad00; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-state, #success-state, #error-state { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">SP</div>
+
+    <!-- Loading -->
+    <div id="loading-state">
+      <div style="width:40px;height:40px;border:4px solid #f0f0f0;border-top-color:#FFC107;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 24px;"></div>
+      <p>Signing you in…</p>
+    </div>
+
+    <!-- Success -->
+    <div id="success-state">
+      <div class="icon">✨</div>
+      <h1>You're Signed In!</h1>
+      <p>Magic link verified. Opening Skillpay now…</p>
+      <a id="open-app-btn" href="#" class="btn">Open Skillpay App</a>
+    </div>
+
+    <!-- Error -->
+    <div id="error-state">
+      <div class="icon">❌</div>
+      <h1>Link Expired</h1>
+      <p id="error-message">This magic link has expired or already been used. Please request a new one.</p>
+      <a href="skillpay://auth/login" class="btn">Back to App</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, parseAuthParams, buildDeepLink } from '/src/supabase.js';
+
+    const loading  = document.getElementById('loading-state');
+    const success  = document.getElementById('success-state');
+    const errState = document.getElementById('error-state');
+    const errMsg   = document.getElementById('error-message');
+    const openBtn  = document.getElementById('open-app-btn');
+
+    function show(el) {
+      [loading, success, errState].forEach(e => e.style.display = 'none');
+      el.style.display = 'block';
+    }
+
+    async function handleMagicLink() {
+      show(loading);
+      const { code, token, refreshToken, error: authError, errorDescription } = parseAuthParams();
+
+      if (authError) {
+        errMsg.textContent = errorDescription || authError;
+        show(errState);
+        return;
+      }
+
+      try {
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        } else if (token) {
+          const { error } = await supabase.auth.setSession({
+            access_token: token,
+            refresh_token: refreshToken || '',
+          });
+          if (error) throw error;
+        } else {
+          throw new Error('No magic link token found.');
+        }
+
+        const deepLink = buildDeepLink('auth/magic-confirmed');
+        openBtn.href = deepLink;
+        show(success);
+        setTimeout(() => { window.location.href = deepLink; }, 1500);
+
+      } catch (err) {
+        errMsg.textContent = err.message;
+        show(errState);
+      }
+    }
+
+    handleMagicLink();
+  </script>
+</body>
+</html>
