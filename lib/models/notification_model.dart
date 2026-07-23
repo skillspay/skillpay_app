@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+/// Matches the NestJS notifications response shape.
+///
+/// DB table: notifications
+/// NestJS endpoint: GET /notifications
 class NotificationModel {
   final String id;
   final String userId;
-  final String message;
-  final String type; // 'payment', 'job', 'proposal', 'general'
+  final String title;
+  final String body;
+  final String type; // job | proposal | payment | booking | general
   final bool isRead;
   final DateTime createdAt;
 
   NotificationModel({
     required this.id,
     required this.userId,
-    required this.message,
+    required this.title,
+    required this.body,
     required this.type,
     required this.isRead,
     required this.createdAt,
@@ -21,33 +27,35 @@ class NotificationModel {
   factory NotificationModel.fromMap(Map<String, dynamic> map) {
     return NotificationModel(
       id: map['id']?.toString() ?? '',
-      userId: map['user_id']?.toString() ?? '',
-      message: map['message']?.toString() ??
-          map['title']?.toString() ??
-          'You have a new notification',
+      userId: map['userId']?.toString() ?? map['user_id']?.toString() ?? '',
+      title: map['title']?.toString() ?? 'Notification',
+      body: map['body']?.toString() ?? '',
       type: map['type']?.toString() ?? 'general',
-      isRead: (map['is_read'] as bool?) ?? false,
-      createdAt: map['created_at'] != null
-          ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+      isRead: (map['read'] as bool?) ?? (map['is_read'] as bool?) ?? false,
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'].toString()) ??
+              DateTime.tryParse(map['created_at']?.toString() ?? '') ??
+              DateTime.now()
           : DateTime.now(),
     );
   }
 
-  /// Returns a suitable icon based on the notification type.
   IconData get icon {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case 'payment':
         return Icons.attach_money_rounded;
       case 'job':
         return Icons.work_outline_rounded;
       case 'proposal':
+      case 'application':
         return Icons.description_outlined;
+      case 'booking':
+        return Icons.calendar_today_rounded;
       default:
         return Icons.notifications_none_rounded;
     }
   }
 
-  /// Returns a human-readable time string.
   String get formattedTime {
     final now = DateTime.now();
     final diff = now.difference(createdAt);

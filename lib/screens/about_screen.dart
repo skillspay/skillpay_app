@@ -49,7 +49,7 @@ class AboutScreen extends StatelessWidget {
                     ),
                   ],
                   image: const DecorationImage(
-                    image: AssetImage('assets/images/skillpay_logo.png'),
+                    image: AssetImage('assets/images/logo.png'),
                     fit: BoxFit.cover,
                   ),
                 ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/edit_profile_screen.dart';
+import 'package:skillpay/services/customer_profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,36 +13,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>?> _userProfileFuture;
+  final _profileService = CustomerProfileService();
 
   @override
   void initState() {
     super.initState();
-    _userProfileFuture = _fetchUserProfile();
-  }
-
-  Future<Map<String, dynamic>?> _fetchUserProfile() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return null;
-
-    try {
-      final response = await Supabase.instance.client
-          .from('user_profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (response != null) return response;
-    } catch (e) {
-      debugPrint('Error fetching user profile: $e');
-    }
-
-    // Fallback if no profile row exists or error occurs
-    return {
-      'id': user.id,
-      'full_name': user.userMetadata?['full_name'] ?? 'User',
-      'email': user.email,
-      'phone_number': user.userMetadata?['phone'] ?? '',
-    };
+    _userProfileFuture = _profileService.fetchProfile();
   }
 
   @override
@@ -73,9 +49,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const EditProfileScreen()),
               ).then((_) {
-                // Refresh profile data when coming back from Edit Screen
                 setState(() {
-                  _userProfileFuture = _fetchUserProfile();
+                  _userProfileFuture = _profileService.fetchProfile();
                 });
               });
             },
@@ -110,13 +85,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
 
           final data = snapshot.data;
-          final fullName = data?['full_name'] as String? ?? 'User ';
+          // NestJS returns camelCase; handle both for safety
+          final fullName = data?['fullName']?.toString() ??
+              data?['full_name']?.toString() ?? 'User';
           final parts = fullName.split(' ');
           final firstName = parts.isNotEmpty ? parts.first : '';
           final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-          final email = data?['email'] as String? ?? '';
-          final phoneNumber = data?['phone_number'] as String? ?? '';
-          final profileImageUrl = data?['profile_image_url'] as String?;
+          final email = data?['user']?['email']?.toString() ??
+              data?['email']?.toString() ?? '';
+          final phoneNumber = data?['user']?['phone']?.toString() ??
+              data?['phone']?.toString() ??
+              data?['phone_number']?.toString() ?? '';
+          final profileImageUrl = data?['profilePhoto']?.toString() ??
+              data?['profile_photo']?.toString();
           
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -140,7 +121,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                     image: profileImageUrl != null
                         ? DecorationImage(
-                            image: NetworkImage(profileImageUrl),
+                            // Add a unique cache-busting parameter based on time to force Flutter to reload the new image
+                            image: NetworkImage(
+                              '$profileImageUrl?v=${DateTime.now().millisecondsSinceEpoch}',
+                            ),
                             fit: BoxFit.cover,
                           )
                         : null,
@@ -157,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                     ).then((_) {
                       setState(() {
-                        _userProfileFuture = _fetchUserProfile();
+                        _userProfileFuture = _profileService.fetchProfile();
                       });
                     });
                   },

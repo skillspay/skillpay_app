@@ -4,6 +4,7 @@ import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/widgets/auth_widgets.dart';
 import 'package:skillpay/screens/account_created_screen.dart';
 import 'package:skillpay/services/auth_service.dart';
+import 'package:skillpay/services/location_service.dart';
 
 class LocationSetupScreen extends StatefulWidget {
   final String email;
@@ -29,7 +30,9 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
   final _townController = TextEditingController();
   final _stateController = TextEditingController();
   final AuthService _authService = AuthService();
+  final LocationService _locationService = LocationService();
   bool _isLoading = false;
+  bool _isLocating = false;
   String? _errorMessage;
 
   bool get _isFilled =>
@@ -45,6 +48,44 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
     super.dispose();
   }
 
+  Future<void> _useCurrentLocation() async {
+    setState(() {
+      _isLocating = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final position = await _locationService.getCurrentLocation();
+      final coords = _locationService.formatCoordinates(position);
+
+      // Pre-fill address with coordinates; town & state left for user to confirm.
+      if (!mounted) return;
+      setState(() {
+        _addressController.text = coords;
+        _isLocating = false;
+      });
+
+      // Show a snackbar guiding the user to fill in town/state.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Location detected! Please fill in your town and state.',
+            style: GoogleFonts.outfit(fontSize: 13),
+          ),
+          backgroundColor: AppColors.textDark,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLocating = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
   void _onContinue() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -53,8 +94,9 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
     });
 
     try {
-      final fullAddress = '${_addressController.text.trim()}, ${_townController.text.trim()}, ${_stateController.text.trim()}';
-      
+      final fullAddress =
+          '${_addressController.text.trim()}, ${_townController.text.trim()}, ${_stateController.text.trim()}';
+
       await _authService.finishProfileSetup(
         email: widget.email,
         fullName: widget.fullName,
@@ -65,7 +107,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
 
       if (!mounted) return;
       setState(() => _isLoading = false);
-      
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AccountCreatedScreen()),
@@ -123,6 +165,42 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
                         icon: Icons.location_on_outlined,
                         validator: (v) =>
                             (v == null || v.isEmpty) ? 'Enter your address' : null,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Use current location button
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton.icon(
+                          onPressed: _isLocating ? null : _useCurrentLocation,
+                          icon: _isLocating
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.textDark,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.my_location_rounded,
+                                  size: 18,
+                                  color: AppColors.textDark,
+                                ),
+                          label: Text(
+                            _isLocating ? 'Detecting location…' : 'Use my current location',
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            alignment: Alignment.centerLeft,
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 14),

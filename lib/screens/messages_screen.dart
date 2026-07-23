@@ -23,25 +23,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     _chatsFuture = _messagesService.fetchChats();
   }
 
-  // Mock data fallback 
-  final List<Map<String, String>> _mockMessages = [
-    {
-      'id': '1',
-      'name': 'James Walker',
-      'lastMessage': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'imagePath': 'assets/images/avatar_james.png',
-      'isOnline': 'true',
-    },
-    {
-      'id': '2',
-      'name': 'Bluecollar',
-      'lastMessage': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'imagePath': 'assets/images/cat_cleaning.png', // Temporary placeholder for others
-      'isOnline': 'true',
-    },
-  ];
+  // Removed static mock messages to ensure production data accurately reflects the database state.
 
   @override
   void dispose() {
@@ -90,12 +72,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 final chats = snapshot.data ?? [];
 
                 if (chats.isEmpty) {
-                  // Fallback for prototyping if no chats or DB not set up yet
-                  if (_mockMessages.isEmpty) return _buildEmptyState();
-                  return _buildListState(_mockMessages, true);
+                  return _buildEmptyState();
                 }
 
-                return _buildListState(chats, false);
+                return _buildListState(chats);
               },
             ),
           ),
@@ -161,36 +141,20 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  Widget _buildListState(List<dynamic> items, bool isMock) {
+  Widget _buildListState(List<dynamic> items) {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 100), // bottom padding for nav bar
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
+        final chat = item as ChatModel;
         
-        String name = '';
-        String lastMsg = '';
-        String time = '';
-        String imagePath = '';
-        bool isOnline = false;
-        bool isNetworkImage = false;
-
-        if (isMock) {
-          final mockItem = item as Map<String, String>;
-          name = mockItem['name'] ?? '';
-          lastMsg = mockItem['lastMessage'] ?? '';
-          time = mockItem['time'] ?? '';
-          imagePath = mockItem['imagePath'] ?? '';
-          isOnline = mockItem['isOnline'] == 'true';
-        } else {
-          final chat = item as ChatModel;
-          name = chat.artisanName;
-          lastMsg = chat.lastMessage;
-          time = chat.timeText;
-          imagePath = chat.artisanAvatarUrl;
-          isOnline = false; // Add real online status lookup if needed later
-          isNetworkImage = imagePath.startsWith('http');
-        }
+        String name = chat.artisanName;
+        String lastMsg = chat.lastMessage;
+        String time = chat.timeText;
+        String imagePath = chat.artisanAvatarUrl;
+        bool isOnline = false; // Add real online status lookup if needed later
+        bool isNetworkImage = imagePath.startsWith('http');
         
         return InkWell(
           onTap: () {
@@ -199,6 +163,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
               MaterialPageRoute(
                 builder: (_) => ChatScreen(
                   artisanName: name,
+                  conversationId: chat.id,
                 ),
               ),
             );

@@ -1,34 +1,56 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:skillpay/models/proposal_model.dart';
 import 'package:flutter/foundation.dart';
+import 'package:skillpay/models/proposal_model.dart';
+import 'package:skillpay/services/api_client.dart';
 
 class ProposalsService {
-  final SupabaseClient _client = Supabase.instance.client;
+  final _api = ApiClient.instance;
 
-  /// Fetch all active proposals for jobs belonging to the current customer
-  Future<List<ProposalModel>> fetchProposals() async {
-    final user = _client.auth.currentUser;
-    if (user == null) {
-      throw Exception('User is not logged in');
-    }
-
+  /// Fetch all pending job applications (proposals) for the homeowner's jobs.
+  Future<List<ProposalModel>> fetchProposals({String? jobId}) async {
     try {
-      // We expect a Supabase view or table relation linking proposals -> jobs & user_profiles.
-      // E.g., select('*, artisan:user_profiles!artisan_id(*), job:jobs!inner(*)') 
-      // where job.customer_id == user.id
-      final response = await _client
-          .from('proposals')
-          .select('*, artisan:user_profiles!proposals_artisan_id_fkey(*), jobs!inner(*)')
-          .eq('jobs.customer_id', user.id)
-          .eq('status', 'pending');
-
-      final List<dynamic> data = response;
-      return data.map((json) => ProposalModel.fromMap(json)).toList();
-    } catch (e) {
-      debugPrint('Error fetching proposals from DB: $e');
-      // If table doesn't exist yet during prototyping, return empty or mock data
-      // For now we will return an empty list if it fails, assuming the DB might not be fully seeded.
+      final query = <String, dynamic>{
+        'status': 'PENDING',
+        if (jobId != null) 'jobId': jobId,
+      };
+      final data =
+          await _api.get('/applications', query: query) as List<dynamic>;
+      return data
+          .map((json) =>
+              ProposalModel.fromMap(json as Map<String, dynamic>))
+          .toList();
+    } on ApiException catch (e) {
+      debugPrint('Error fetching proposals: ${e.message}');
       return [];
+    }
+  }
+
+  /// Fetch a single application by ID.
+  Future<ProposalModel?> fetchProposal(String applicationId) async {
+    try {
+      final data = await _api.get('/applications/$applicationId')
+          as Map<String, dynamic>;
+      return ProposalModel.fromMap(data);
+    } on ApiException catch (e) {
+      debugPrint('Error fetching proposal: ${e.message}');
+      return null;
+    }
+  }
+
+  /// Accept a proposal — creates a booking and updates application status.
+  Future<void> acceptProposal(String applicationId) async {
+    try {
+      await _api.patch('/applications/$applicationId/accept');
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  /// Reject a proposal.
+  Future<void> rejectProposal(String applicationId) async {
+    try {
+      await _api.patch('/applications/$applicationId/reject');
+    } on ApiException catch (e) {
+      throw Exception(e.message);
     }
   }
 }

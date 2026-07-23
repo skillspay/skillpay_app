@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:skillpay/theme/app_theme.dart';
-import 'package:skillpay/widgets/auth_widgets.dart'; // Reusing text field styles
-
+import 'package:skillpay/widgets/auth_widgets.dart';
 import 'package:skillpay/services/jobs_service.dart';
+import 'package:skillpay/services/customer_profile_service.dart';
 import 'package:skillpay/models/job_model.dart';
 import 'package:uuid/uuid.dart';
 
@@ -16,19 +18,75 @@ class CreateJobScreen extends StatefulWidget {
 
 class _CreateJobScreenState extends State<CreateJobScreen> {
   final _titleController = TextEditingController();
-  final _locationController = TextEditingController();
   final _detailsController = TextEditingController();
   final _budgetController = TextEditingController();
   final JobsService _jobsService = JobsService();
   
   String? _selectedCategory;
   String? _selectedTimeline;
+  String? _selectedLocation;
+  List<String> _savedLocations = [];
+  File? _selectedFile;
+  String? _selectedFileName;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedLocations();
+  }
+
+  Future<void> _loadSavedLocations() async {
+    try {
+      final addresses = await CustomerProfileService().fetchSavedAddresses();
+      if (addresses.isNotEmpty && mounted) {
+        setState(() {
+          // Build display strings from structured address data
+          _savedLocations = addresses.map((a) {
+            final parts = [
+              a['street'],
+              a['city'],
+              a['state'],
+              a['country'],
+            ].where((p) => p != null && p.toString().isNotEmpty).toList();
+            return parts.join(', ');
+          }).toList();
+          // Auto-select first address
+          if (_savedLocations.isNotEmpty) {
+            _selectedLocation = _savedLocations.first;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load saved locations: \$e');
+    }
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+      if (picked != null && mounted) {
+        setState(() {
+          _selectedFile = File(picked.path);
+          _selectedFileName = picked.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick file: \$e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _locationController.dispose();
     _detailsController.dispose();
     _budgetController.dispose();
     super.dispose();
@@ -49,8 +107,8 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         id: const Uuid().v4(), // Generate temporary ID, Supabase will generate a real one but we need it for the model
         title: _titleController.text.trim(),
         description: _detailsController.text.trim(),
-        category: _selectedCategory ?? 'General',
-        location: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : 'Location not provided',
+        category: _selectedCategory ?? 'Cleaning', // Default safe category
+        location: _selectedLocation ?? 'Location not provided',
         budget: double.tryParse(_budgetController.text.replaceAll('\$', '').trim()) ?? 0.0,
         timeline: _selectedTimeline ?? 'Flexible',
         status: 'pending',
@@ -106,9 +164,9 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
             _buildLabel('Job Category'),
             _buildDropdown(
-              hint: 'Select',
+              hint: 'Select category',
               value: _selectedCategory,
-              items: ['Plumbing', 'Electrical', 'Cleaning', 'Engineering'],
+              items: ['Plumbing', 'Electrical', 'Cleaning'],
               onChanged: (val) => setState(() => _selectedCategory = val),
             ),
             const SizedBox(height: 20),
@@ -117,21 +175,38 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildLabel('Location'),
-                Text(
-                  'Saved address',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryDark,
+                if (_savedLocations.isEmpty)
+                  Text(
+                    'No saved address',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textMedium,
+                    ),
                   ),
-                ),
               ],
             ),
-            const SizedBox(height: 8),
-            buildAuthTextField(
-              controller: _locationController,
-              hint: 'Enter address',
-            ),
+            _savedLocations.isNotEmpty
+                ? _buildDropdown(
+                    hint: 'Select saved location',
+                    value: _selectedLocation,
+                    items: _savedLocations,
+                    onChanged: (val) => setState(() => _selectedLocation = val),
+                    icon: Icons.location_on_outlined,
+                  )
+                : Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9F9F9),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE0E0E0)),
+                    ),
+                    child: Text(
+                      'Please add an address in your Profile first.',
+                      style: GoogleFonts.outfit(color: AppColors.textMedium, fontSize: 15),
+                    ),
+                  ),
             const SizedBox(height: 20),
 
             _buildLabel('Additional Details'),
@@ -158,33 +233,82 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             const SizedBox(height: 20),
 
             _buildLabel('File upload'),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9F9F9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.cloud_upload_outlined, color: AppColors.textMedium),
+            GestureDetector(
+              onTap: _pickFile,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9F9F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _selectedFile != null
+                        ? AppColors.primary
+                        : const Color(0xFFE0E0E0),
+                    width: _selectedFile != null ? 1.5 : 1,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Click to upload file',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      color: AppColors.textMedium,
-                    ),
-                  ),
-                ],
+                ),
+                child: _selectedFile != null
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withAlpha(30),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.image_outlined,
+                                  color: AppColors.primaryDark, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _selectedFileName ?? 'File selected',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  color: AppColors.textDark,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () =>
+                                  setState(() {
+                                    _selectedFile = null;
+                                    _selectedFileName = null;
+                                  }),
+                              icon: const Icon(Icons.close,
+                                  size: 18, color: AppColors.textMedium),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.cloud_upload_outlined,
+                                color: AppColors.textMedium),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap to upload a file',
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              color: AppColors.textMedium,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
             const SizedBox(height: 20),

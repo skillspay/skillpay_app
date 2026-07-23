@@ -1,8 +1,13 @@
+/// Matches the NestJS conversations response shape.
+///
+/// DB table: conversations (joined with latest message + artisan profile)
+/// NestJS endpoint: GET /chat/conversations
 class ChatModel {
-  final String id;
+  final String id; // conversations.id
+  final String jobId;
   final String artisanId;
   final String artisanName;
-  final String artisanAvatarUrl;
+  final String? artisanAvatarUrl;
   final String lastMessage;
   final String timeText;
   final int unreadCount;
@@ -10,9 +15,10 @@ class ChatModel {
 
   ChatModel({
     required this.id,
+    required this.jobId,
     required this.artisanId,
     required this.artisanName,
-    required this.artisanAvatarUrl,
+    this.artisanAvatarUrl,
     required this.lastMessage,
     required this.timeText,
     required this.unreadCount,
@@ -20,18 +26,45 @@ class ChatModel {
   });
 
   factory ChatModel.fromMap(Map<String, dynamic> map) {
-    // Assuming a DB view or join returning artisan info embedded
-    final artisanData = map['artisan'] ?? {};
-    
+    final artisan = map['artisan'] as Map<String, dynamic>? ?? {};
+    final updatedAt = map['updatedAt'] != null
+        ? DateTime.tryParse(map['updatedAt'].toString()) ??
+            DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
+            DateTime.now()
+        : DateTime.now();
+
+    final diff = DateTime.now().difference(updatedAt);
+    String timeText = 'Just now';
+    if (diff.inDays > 0) {
+      timeText = '${diff.inDays}d';
+    } else if (diff.inHours > 0) {
+      timeText = '${diff.inHours}h';
+    } else if (diff.inMinutes > 0) {
+      timeText = '${diff.inMinutes}m';
+    }
+
     return ChatModel(
-      id: map['id'] as String,
-      artisanId: map['artisan_id'] as String,
-      artisanName: artisanData['full_name'] ?? 'Artisan',
-      artisanAvatarUrl: artisanData['profile_image_url'] ?? 'assets/images/avatar_james.png',
-      lastMessage: map['last_message'] ?? '...',
-      timeText: map['time_text'] ?? 'Just now',
-      unreadCount: map['unread_count'] ?? 0,
-      updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'].toString()) : DateTime.now(),
+      id: map['id']?.toString() ?? '',
+      jobId: map['jobId']?.toString() ?? map['job_id']?.toString() ?? '',
+      artisanId: map['artisanId']?.toString() ??
+          map['artisan_id']?.toString() ??
+          artisan['id']?.toString() ??
+          '',
+      artisanName: artisan['fullName']?.toString() ??
+          artisan['full_name']?.toString() ??
+          map['artisanName']?.toString() ??
+          'Artisan',
+      artisanAvatarUrl: artisan['profilePhoto']?.toString() ??
+          artisan['profile_photo']?.toString() ??
+          map['artisanAvatarUrl']?.toString(),
+      lastMessage: map['lastMessage']?.toString() ??
+          map['last_message']?.toString() ??
+          '',
+      timeText: map['timeText']?.toString() ?? timeText,
+      unreadCount: (map['unreadCount'] as int?) ??
+          (map['unread_count'] as int?) ??
+          0,
+      updatedAt: updatedAt,
     );
   }
 }

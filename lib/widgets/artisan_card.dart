@@ -44,12 +44,20 @@ class ArtisanCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipOval(
-                child: Image.asset(
-                  imagePath,
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                ),
+                child: imagePath.startsWith('http')
+                    ? Image.network(
+                        imagePath,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, error, trace) => const Icon(Icons.person, size: 48),
+                      )
+                    : Image.asset(
+                        imagePath,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(

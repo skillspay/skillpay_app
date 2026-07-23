@@ -1,17 +1,32 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:skillpay/services/api_client.dart';
 
+/// Handles all authentication.
+///
+/// Flow:
+///   1. Call Supabase Auth to sign up / sign in → get JWT
+///   2. Call NestJS /auth/* to sync the user record in Postgres
+///
+/// The Flutter app never reads from Postgres directly — NestJS owns all
+/// business data. Supabase is only used here for auth token management
+/// and in messages_service for Realtime.
 class AuthService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final _supabase = Supabase.instance.client;
+  final _api = ApiClient.instance;
 
-  /// 1. Sign up the user with email/password.
-  /// Generates the 6-digit OTP sent to their email.
+  // ─── Registration ────────────────────────────────────────────────────────
+
+  /// Step 1 — Create Supabase auth account.
+  /// Only calls Supabase here — no NestJS sync yet because Supabase
+  /// requires email confirmation before a session (and JWT) is issued.
+  /// The NestJS user row is created on first signIn() after confirmation.
   Future<void> signUp({
     required String email,
     required String password,
     required String fullName,
     required String phone,
-    required String role,
   }) async {
     try {
       await _supabase.auth.signUp(
@@ -20,15 +35,20 @@ class AuthService {
         data: {
           'full_name': fullName,
           'phone': phone,
-          'role': role,
+          'role': 'HOMEOWNER',
         },
       );
+      // Email confirmation sent — user must verify before they can sign in.
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
-      throw Exception(_formatError(e));
+      throw Exception(e.toString());
     }
   }
 
-  /// 2. Verify the 6-digit OTP sent to the user's email.
+  // ─── OTP Verification ────────────────────────────────────────────────────
+
+  /// Step 2 — Verify the 6-digit OTP sent to the user's email.
   Future<void> verifyEmailOTP(String email, String otp) async {
     try {
       await _supabase.auth.verifyOTP(
@@ -36,167 +56,155 @@ class AuthService {
         email: email,
         token: otp,
       );
-    } catch (e) {
-      throw Exception(_formatError(e));
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     }
   }
 
-  /// 3. Call the custom RPC to create or update the public.user_profiles record.
-  /// Bypasses RLS to insert their location and final details.
+  // ─── Profile setup ───────────────────────────────────────────────────────
+
+  /// Step 3 — Finish homeowner profile setup via NestJS.
+  /// Called after OTP verification, creates the `homeowners` row.
   Future<void> finishProfileSetup({
-    required String email,
     required String fullName,
     required String phone,
     required String address,
-    required String userType,
+    required double? latitude,
+    required double? longitude,
   }) async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('User is not authenticated.');
-      }
-
-      await _supabase.rpc(
-        'create_or_update_user_profile',
-        params: {
-          'p_user_id': user.id,
-          'p_email': email,
-          'p_full_name': fullName,
-          'p_phone_number': phone,
-          'p_home_address': address,
-          'p_profile_image_url': null,
-          'p_user_type': userType.toLowerCase(), // e.g. 'customer'
-        },
-      );
-    } catch (e) {
-      throw Exception(_formatError(e));
+      await _api.post('/homeowners/profile/setup', body: {
+        'fullName': fullName,
+        'phone': phone,
+        'defaultAddress': address,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      });
+    } on ApiException catch (e) {
+      throw Exception(e.message);
     }
   }
 
-  /// 4. Upload a profile image to Supabase Storage and update the profile URL.
+  // ─── Profile image ───────────────────────────────────────────────────────
+
+  /// Upload a profile image via NestJS storage endpoint.
+  /// Returns the public URL of the uploaded image.
   Future<String> uploadProfileImage(File imageFile) async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('User is not authenticated.');
-      }
-
-      final fileExt = imageFile.path.split('.').last;
-      final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
-      final filePath = fileName; // Upload directly to root of bucket
-
-      // Assuming a bucket named 'avatars' exists and is publicly readable
-      await _supabase.storage.from('avatars').upload(
-        filePath,
-        imageFile,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      final result = await _api.uploadFile(
+        '/storage/profile-image',
+        file: imageFile,
+        fieldName: 'file',
       );
-
-      final imageUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
-
-      // Update auth metadata
-      await _supabase.auth.updateUser(
-        UserAttributes(data: {'profile_image_url': imageUrl}),
-      );
-
-      // Update user_profiles table
-      await _supabase.from('user_profiles').update({
-        'profile_image_url': imageUrl,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', user.id);
-
-      return imageUrl;
-    } catch (e) {
-      throw Exception(_formatError(e));
+      final url = result['url']?.toString() ?? '';
+      if (url.isEmpty) throw Exception('Upload succeeded but no URL returned.');
+      return url;
+    } on ApiException catch (e) {
+      throw Exception(e.message);
     }
   }
 
-  /// 4. Update the user profile details
-  Future<void> updateUserProfile({
-    required String fullName,
-    required String phone,
-    required String dateOfBirth, // Optional for future use
-  }) async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('User is not authenticated.');
-      }
+  // ─── Sign in ─────────────────────────────────────────────────────────────
 
-      // 1. Update auth.users metadata first (for quick fallback access)
-      await _supabase.auth.updateUser(
-        UserAttributes(
-          data: {
-            'full_name': fullName,
-            'phone': phone,
-            'dob': dateOfBirth,
-          },
-        ),
-      );
-
-      // 2. Try to update the public.user_profiles table.
-      final existingProfile = await _supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (existingProfile != null) {
-        // Just update existing fields without touching others like home_address or user_type
-        await _supabase.from('user_profiles').update({
-          'full_name': fullName,
-          'phone_number': phone,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', user.id);
-      } else {
-        // Insert the missing row with the required user_type column
-        final defaultRole = user.userMetadata?['role']?.toString().toLowerCase() ?? 'customer';
-        await _supabase.from('user_profiles').insert({
-          'id': user.id,
-          'full_name': fullName,
-          'phone_number': phone,
-          'email': user.email,
-          'user_type': defaultRole,
-          'updated_at': DateTime.now().toIso8601String(),
-        });
-      }
-      
-    } catch (e) {
-      throw Exception(_formatError(e));
-    }
-  }
-
-  /// 5. Sign in an existing user
+  /// Signs in via Supabase Auth (JWT guaranteed here — email is confirmed).
+  /// On first login, upserts the NestJS user row. On subsequent logins,
+  /// updates last_login. The register call is idempotent so safe to call every time.
   Future<void> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      await _supabase.auth.signInWithPassword(
+      final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
+
+      // JWT is now available — sync/upsert user in NestJS Postgres.
+      // /auth/register is idempotent: creates on first call, returns existing on repeat.
+      final user = response.user;
+      if (user != null) {
+        try {
+          await _api.post('/auth/register', body: {
+            'email': user.email ?? email,
+            'fullName': user.userMetadata?['full_name']?.toString() ?? '',
+            'phone': user.userMetadata?['phone']?.toString() ?? '',
+            'role': 'HOMEOWNER',
+          });
+        } on ApiException {
+          // Non-fatal — user can still proceed if register fails
+          debugPrint('[Auth] NestJS register sync failed — will retry on next login');
+        }
+      }
+
+      // Update last_login
+      try {
+        await _api.post('/auth/login');
+      } on ApiException {
+        // Non-fatal
+      }
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
-      throw Exception(_formatError(e));
+      if (e is ApiException) throw Exception(e.message);
+      throw Exception(e.toString());
     }
   }
 
-  /// 5. Sign out the current user
+  // ─── Sign out ────────────────────────────────────────────────────────────
+
   Future<void> signOut() async {
     try {
       await _supabase.auth.signOut();
-    } catch (e) {
-      throw Exception(_formatError(e));
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     }
   }
 
-  /// Helper to extract clean error messages from Supabase exceptions
-  String _formatError(dynamic e) {
-    if (e is AuthException) {
-      return e.message;
-    } else if (e is PostgrestException) {
-      return e.message;
+  // ─── Password reset ──────────────────────────────────────────────────────
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(email);
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     }
-    return e.toString();
   }
+
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  // ─── Update profile ──────────────────────────────────────────────────────
+
+  /// Updates homeowner profile fields via NestJS.
+  Future<void> updateUserProfile({
+    required String fullName,
+    required String phone,
+    String? dateOfBirth,
+  }) async {
+    try {
+      await _api.patch('/homeowners/profile', body: {
+        'fullName': fullName,
+        'phone': phone,
+        if (dateOfBirth != null) 'dob': dateOfBirth,
+      });
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  /// Returns the current authenticated Supabase user, or null.
+  User? get currentUser => _supabase.auth.currentUser;
+
+  /// Whether a user is currently signed in.
+  bool get isSignedIn => _supabase.auth.currentSession != null;
+
+  /// Stream of auth state changes (use in SplashScreen / route guards).
+  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
 }

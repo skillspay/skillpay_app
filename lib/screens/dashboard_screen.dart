@@ -6,6 +6,9 @@ import 'package:skillpay/widgets/artisan_card.dart';
 import 'package:skillpay/services/jobs_service.dart';
 import 'package:skillpay/models/job_model.dart';
 import 'package:skillpay/screens/notifications_screen.dart';
+import 'package:skillpay/services/worker_service.dart';
+import 'package:skillpay/services/customer_profile_service.dart';
+import 'package:skillpay/models/worker_model.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -23,39 +26,18 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final JobsService _jobsService = JobsService();
+  final WorkerService _workerService = WorkerService();
+  final CustomerProfileService _profileService = CustomerProfileService();
   late Future<List<JobModel>> _jobsFuture;
   late Future<Map<String, dynamic>?> _userProfileFuture;
+  late Future<List<WorkerModel>> _workersFuture;
 
   @override
   void initState() {
     super.initState();
-    _jobsFuture = _jobsService.fetchCustomerJobs();
-    _userProfileFuture = _fetchUserProfile();
-  }
-
-  Future<Map<String, dynamic>?> _fetchUserProfile() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return null;
-
-    try {
-      final response = await Supabase.instance.client
-          .from('user_profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (response != null) return response;
-    } catch (e) {
-      debugPrint('Error fetching user profile: $e');
-    }
-
-    // Fallback if no profile row exists or error occurs
-    return {
-      'id': user.id,
-      'full_name': user.userMetadata?['full_name'] ?? 'User',
-      'email': user.email,
-      'phone_number': user.userMetadata?['phone'] ?? '',
-    };
+    _jobsFuture = _jobsService.fetchMyJobs();
+    _userProfileFuture = _profileService.fetchProfile();
+    _workersFuture = _workerService.fetchNearbyWorkers();
   }
 
   @override
@@ -85,11 +67,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         future: _userProfileFuture,
                         builder: (context, snapshot) {
                           String firstName = 'User';
+                          String? profileImageUrl;
                           if (snapshot.hasData && snapshot.data != null) {
-                            final fullName = snapshot.data!['full_name'] as String?;
+                            final data = snapshot.data!;
+                            // NestJS returns fullName (camelCase)
+                            final fullName = data['fullName']?.toString() ??
+                                data['full_name']?.toString();
                             if (fullName != null && fullName.isNotEmpty) {
                               firstName = fullName.split(' ').first;
                             }
+                            profileImageUrl = data['profilePhoto']?.toString() ??
+                                data['profile_photo']?.toString();
                           }
 
                           return Row(
@@ -97,11 +85,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Container(
                                 width: 44,
                                 height: 44,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFE0E0E0),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0E0E0),
                                   shape: BoxShape.circle,
+                                  image: profileImageUrl != null
+                                      ? DecorationImage(
+                                          image: NetworkImage(
+                                            '$profileImageUrl?v=${DateTime.now().millisecondsSinceEpoch}',
+                                          ),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
-                                child: const Icon(Icons.person, color: Colors.white),
+                                child: profileImageUrl == null
+                                    ? const Icon(Icons.person, color: Colors.white, size: 26)
+                                    : null,
                               ),
                               const SizedBox(width: 12),
                               Column(
@@ -285,27 +283,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      children: [
-                        const ArtisanCard(
-                          imagePath: 'assets/images/avatar_james.png',
-                          name: 'James Walker',
-                          profession: 'Plumber',
-                          jobsCompleted: 45,
-                          rating: 4.7,
-                        ),
-                        // Placeholder for a second card to show scrolling
-                        Opacity(
-                          opacity: 0.5,
-                          child: ArtisanCard(
-                            imagePath: 'assets/images/avatar_james.png',
-                            name: 'Marcus Bell',
-                            profession: 'Electrician',
-                            jobsCompleted: 32,
-                            rating: 4.9,
-                          ),
-                        ),
-                      ],
+                    child: FutureBuilder<List<WorkerModel>>(
+                      future: _workersFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.all(24.0),
+                            child: CircularProgressIndicator(color: AppColors.primary),
+                          );
+                        }
+                        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Text(
+                            'No artisans found near your location.', 
+                            style: GoogleFonts.outfit(color: AppColors.textMedium)
+                          );
+                        }
+
+                        return Row(
+                          children: snapshot.data!.map((worker) => Padding(
+                            padding: const EdgeInsets.only(right: 16),
+                            child: ArtisanCard(
+                              // fallback to local asset if no URL
+                              imagePath: worker.profileImageUrl ?? 'assets/images/avatar_placeholder.png', 
+                              name: worker.fullName,
+                              profession: worker.profession,
+                              jobsCompleted: worker.jobsCompleted,
+                              rating: worker.averageRating,
+                            ),
+                          )).toList(),
+                        );
+                      }
                     ),
                   ),
                   

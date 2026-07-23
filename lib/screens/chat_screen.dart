@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:skillpay/models/message_model.dart';
+import 'package:skillpay/services/messages_service.dart';
 import 'package:skillpay/theme/app_theme.dart';
 
 class ChatScreen extends StatefulWidget {
   final String artisanName;
+  final String conversationId;
 
-  const ChatScreen({super.key, required this.artisanName});
+  const ChatScreen({
+    super.key,
+    required this.artisanName,
+    required this.conversationId,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -14,55 +22,59 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final MessagesService _messagesService = MessagesService();
 
-  // Mock thread data
-  final List<Map<String, dynamic>> _messages = [
-    {
-      'dateHeader': 'Today',
-      'isHeader': true,
-    },
-    {
-      'text': 'Hello, Any update on the project?',
-      'time': 'Today 11:53',
-      'isMe': false,
-      'isHeader': false,
-    },
-    {
-      'text': 'Hi, Yes there is?',
-      'time': 'Today 11:53',
-      'isMe': true,
-      'isHeader': false,
-    },
-    {
-      'text': 'Happy to inform you that your job has been completed.',
-      'time': 'Today 11:53',
-      'isMe': true,
-      'isHeader': false,
-    },
-  ];
+  List<MessageModel> _messages = [];
+  bool _isLoading = true;
+  String? _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    _loadMessages();
+    _subscribeToRealtime();
+  }
 
   @override
   void dispose() {
+    _messagesService.unsubscribe();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
-    
-    setState(() {
-      _messages.add({
-        'text': _messageController.text.trim(),
-        'time': 'Just now',
-        'isMe': true,
-        'isHeader': false,
-      });
-    });
-    
-    _messageController.clear();
-    
-    // Scroll to bottom
+  Future<void> _loadMessages() async {
+    try {
+      final msgs = await _messagesService.fetchMessages(
+        widget.conversationId,
+        limit: 50,
+      );
+      if (mounted) {
+        setState(() {
+          _messages = msgs;
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _subscribeToRealtime() {
+    _messagesService.subscribeToMessages(
+      conversationId: widget.conversationId,
+      onMessage: (msg) {
+        if (mounted) {
+          setState(() => _messages.add(msg));
+          _scrollToBottom();
+        }
+      },
+    );
+  }
+
+  void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -74,10 +86,32 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+    _messageController.clear();
+
+    try {
+      final sent = await _messagesService.sendMessage(
+        conversationId: widget.conversationId,
+        message: text,
+      );
+      if (mounted) {
+        setState(() => _messages.add(sent));
+        _scrollToBottom();
+      }
+    } catch (e) {
+      debugPrint('Error sending message: $e');
+    }
+
+    // Mark conversation as seen
+    await _messagesService.markConversationAsSeen(widget.conversationId);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9), // Light background for chat
+      backgroundColor: const Color(0xFFF9F9F9),
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
@@ -98,24 +132,34 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(24),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                
-                if (message['isHeader'] == true) {
-                  return _buildDateHeader(message['dateHeader']);
-                }
-                
-                return _buildMessageBubble(
-                  text: message['text'],
-                  time: message['time'],
-                  isMe: message['isMe'],
-                );
-              },
-            ),
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary))
+                : _messages.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Start a conversation',
+                          style: GoogleFonts.outfit(
+                              color: AppColors.textMedium),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(24),
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = _messages[index];
+                          final isMe = msg.senderId == _currentUserId;
+                          final time =
+                              '${msg.createdAt.hour.toString().padLeft(2, '0')}:${msg.createdAt.minute.toString().padLeft(2, '0')}';
+                          return _buildBubble(
+                            text: msg.message,
+                            time: time,
+                            isMe: isMe,
+                          );
+                        },
+                      ),
           ),
           _buildInputArea(),
         ],
@@ -123,31 +167,22 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildDateHeader(String date) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 24),
-      alignment: Alignment.center,
-      child: Text(
-        date,
-        style: GoogleFonts.outfit(
-          fontSize: 13,
-          color: AppColors.textMedium,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble({required String text, required String time, required bool isMe}) {
+  Widget _buildBubble({
+    required String text,
+    required String time,
+    required bool isMe,
+  }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Column(
-        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75, // Max 75% width
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
             ),
             decoration: BoxDecoration(
               color: isMe ? AppColors.primary : Colors.white,
@@ -169,18 +204,15 @@ class _ChatScreenState extends State<ChatScreen> {
               text,
               style: GoogleFonts.outfit(
                 fontSize: 15,
-                color: isMe ? Colors.white : AppColors.textDark, // White text on yellow bubble based on mockup
-                fontWeight: FontWeight.w400,
+                color: isMe ? Colors.white : AppColors.textDark,
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             time,
             style: GoogleFonts.outfit(
-              fontSize: 12,
-              color: AppColors.textMedium,
-            ),
+                fontSize: 12, color: AppColors.textMedium),
           ),
         ],
       ),
@@ -193,13 +225,12 @@ class _ChatScreenState extends State<ChatScreen> {
         left: 24,
         right: 24,
         top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 16, // Safe area bottom
+        bottom: MediaQuery.of(context).padding.bottom + 16,
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
-          top: BorderSide(color: Color(0xFFF0F0F0), width: 1),
-        ),
+            top: BorderSide(color: Color(0xFFF0F0F0), width: 1)),
       ),
       child: Row(
         children: [
@@ -209,35 +240,22 @@ class _ChatScreenState extends State<ChatScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFF9F9F9),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                border: Border.all(
+                    color: const Color(0xFFE0E0E0), width: 1),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      decoration: InputDecoration(
-                        hintText: 'Type your message...',
-                        hintStyle: GoogleFonts.outfit(
-                          color: const Color(0xFFB0B0B0),
-                          fontSize: 14,
-                        ),
-                        border: InputBorder.none,
-                      ),
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        color: AppColors.textDark,
-                      ),
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
+              child: TextField(
+                controller: _messageController,
+                decoration: InputDecoration(
+                  hintText: 'Type your message...',
+                  hintStyle: GoogleFonts.outfit(
+                    color: const Color(0xFFB0B0B0),
+                    fontSize: 14,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.attach_file, color: Color(0xFFB0B0B0)),
-                    onPressed: () {},
-                    constraints: const BoxConstraints(),
-                    padding: EdgeInsets.zero,
-                  ),
-                ],
+                  border: InputBorder.none,
+                ),
+                style: GoogleFonts.outfit(
+                    fontSize: 14, color: AppColors.textDark),
+                onSubmitted: (_) => _sendMessage(),
               ),
             ),
           ),
@@ -251,7 +269,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              child: const Icon(Icons.send_rounded,
+                  color: Colors.white, size: 20),
             ),
           ),
         ],
