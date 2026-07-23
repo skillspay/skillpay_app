@@ -9,7 +9,8 @@ export class StorageService {
   private readonly serviceRoleKey: string;
 
   constructor(private readonly config: ConfigService) {
-    this.supabaseUrl = this.config.get<string>('supabase.url')!;
+    const rawUrl = this.config.get<string>('supabase.url')!;
+    this.supabaseUrl = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
     this.serviceRoleKey = this.config.get<string>('supabase.serviceRoleKey')!;
   }
 
@@ -44,17 +45,21 @@ export class StorageService {
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const parsed = new URL(url);
+      const tenantId = parsed.hostname.split('.')[0];
       const options: https.RequestOptions = {
         hostname: parsed.hostname,
         port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
         path: parsed.pathname + parsed.search,
         method,
         headers: {
+          Host: parsed.hostname,
           Authorization: `Bearer ${this.serviceRoleKey}`,
           apikey: this.serviceRoleKey,
           'Content-Type': contentType,
           'Content-Length': body.length,
           'x-upsert': 'true',
+          'x-tenant-id': tenantId,
+          'x-forwarded-host': parsed.hostname,
         },
       };
 
@@ -70,7 +75,7 @@ export class StorageService {
           } else {
             reject(
               new InternalServerErrorException(
-                `Supabase Storage error (${res.statusCode}): ${responseBody}`,
+                `Supabase Storage error (${res.statusCode}) for URL [${url}] with Host [${options.hostname}]: ${responseBody}`,
               ),
             );
           }
