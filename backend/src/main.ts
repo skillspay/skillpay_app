@@ -75,8 +75,8 @@ async function bootstrap() {
     );
   }
 
-  await app.listen(port);
-  console.log(`🚀 Skillpay API running on http://localhost:${port}/${apiPrefix}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Skillpay API running on http://0.0.0.0:${port}/${apiPrefix}`);
 }
 
 bootstrap();
