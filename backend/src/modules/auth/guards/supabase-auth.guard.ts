@@ -23,10 +23,12 @@ export class SupabaseAuthGuard implements CanActivate {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.supabase = createClient(
-      this.config.get<string>('supabase.url')!,
-      this.config.get<string>('supabase.serviceRoleKey')!,
-    );
+    const url = this.config.get<string>('supabase.url') ?? '';
+    const key = this.config.get<string>('supabase.serviceRoleKey') ?? '';
+    if (!url || !key) {
+      this.logger.error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set!');
+    }
+    this.supabase = createClient(url || 'https://placeholder.supabase.co', key || 'placeholder');
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

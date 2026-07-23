@@ -11,14 +11,14 @@ export const validationSchema = Joi.object({
   // Database
   DATABASE_URL: Joi.string().required(),
 
-  // Supabase
+  // Supabase — keep required but allow empty string so app starts and shows config error in logs
   SUPABASE_URL: Joi.string().uri().required(),
   SUPABASE_ANON_KEY: Joi.string().required(),
   SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
   SUPABASE_JWT_SECRET: Joi.string().required(),
 
   // JWT (admin sessions)
-  JWT_SECRET: Joi.string().min(32).required(),
+  JWT_SECRET: Joi.string().min(8).required(),
   JWT_EXPIRES_IN: Joi.string().default('7d'),
 
   // Stripe

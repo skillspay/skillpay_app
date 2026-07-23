@@ -79,4 +79,7 @@ async function bootstrap() {
   console.log(`🚀 Skillpay API running on http://0.0.0.0:${port}/${apiPrefix}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('❌ Fatal startup error:', err);
+  process.exit(1);
+});
