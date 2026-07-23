@@ -286,7 +286,7 @@ class _HireArtisanScreenState extends State<HireArtisanScreen> {
           
           // Dynamic Badges
           Row(
-            children: [_selectedJob?.category ?? 'General'].map((badge) {
+            children: [_selectedJob?.categoryName ?? 'General'].map((badge) {
               return Container(
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -316,7 +316,7 @@ class _HireArtisanScreenState extends State<HireArtisanScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _selectedJob?.location ?? 'Location not provided',
+                  _selectedJob?.address ?? 'Location not provided',
                   style: GoogleFonts.outfit(
                     fontSize: 12,
                     color: AppColors.textMedium,
@@ -342,7 +342,7 @@ class _HireArtisanScreenState extends State<HireArtisanScreen> {
           
           // Footer Details
           Text(
-            'Job ID: ${_selectedJob?.id.split('-').first.toUpperCase() ?? 'N/A'}  •  Proposal: ${_selectedJob?.proposalCount ?? 0}',
+            'Job ID: ${_selectedJob?.id.split('-').first.toUpperCase() ?? 'N/A'}  •  Proposals: ${_selectedJob?.applicationCount ?? 0}',
             style: GoogleFonts.outfit(
               fontSize: 12,
               fontWeight: FontWeight.w500,
