@@ -28,7 +28,16 @@ export class SupabaseAuthGuard implements CanActivate {
     if (!url || !key) {
       this.logger.error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set!');
     }
-    this.supabase = createClient(url || 'https://placeholder.supabase.co', key || 'placeholder');
+    this.supabase = createClient(url || 'https://placeholder.supabase.co', key || 'placeholder', {
+      realtime: {
+        // Disable realtime on the server-side auth guard client —
+        // we only use this client to validate JWTs, not for subscriptions
+        params: { eventsPerSecond: -1 },
+      },
+      global: {
+        headers: {},
+      },
+    });
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
