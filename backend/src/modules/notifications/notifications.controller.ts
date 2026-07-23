@@ -1,7 +1,6 @@
 import { Controller, Get, Patch, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
-import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -10,7 +9,6 @@ import { Role, NotificationType } from '@prisma/client';
 
 @ApiTags('Notifications')
 @ApiBearerAuth('supabase-jwt')
-@UseGuards(SupabaseAuthGuard)
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}

@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
-import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -10,7 +9,7 @@ import { Role } from '@prisma/client';
 
 @ApiTags('Admin')
 @ApiBearerAuth('supabase-jwt')
-@UseGuards(SupabaseAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('admin')
 export class AdminController {

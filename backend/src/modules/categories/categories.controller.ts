@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
-import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -20,7 +19,7 @@ export class CategoriesController {
   }
 
   @ApiBearerAuth('supabase-jwt')
-  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @Post()
   @ApiOperation({ summary: 'Create service category (admin)' })
@@ -29,7 +28,7 @@ export class CategoriesController {
   }
 
   @ApiBearerAuth('supabase-jwt')
-  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @Patch(':id')
   @ApiOperation({ summary: 'Update service category (admin)' })

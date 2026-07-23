@@ -10,13 +10,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { ApplicationsService } from './applications.service';
-import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/request-with-user.interface';
 
 @ApiTags('Applications')
 @ApiBearerAuth('supabase-jwt')
-@UseGuards(SupabaseAuthGuard)
 @Controller('applications')
 export class ApplicationsController {
   constructor(

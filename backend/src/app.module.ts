@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from './config/config.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AppController } from './app.controller';
@@ -20,6 +21,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { AdminModule } from './modules/admin/admin.module';
+
+// Guard
+import { SupabaseAuthGuard } from './modules/auth/guards/supabase-auth.guard';
 
 @Module({
   imports: [
@@ -45,6 +49,15 @@ import { AdminModule } from './modules/admin/admin.module';
     AdminModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Register SupabaseAuthGuard globally so all modules can inject it.
+    // ConfigModule and PrismaModule are @Global() so their services are
+    // available here without explicit imports.
+    {
+      provide: APP_GUARD,
+      useClass: SupabaseAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

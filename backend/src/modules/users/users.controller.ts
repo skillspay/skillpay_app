@@ -17,14 +17,13 @@ import { Role, UserStatus } from '@prisma/client';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FindUsersDto } from './dto/find-users.dto';
-import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth('supabase-jwt')
-@UseGuards(SupabaseAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('users')
 export class UsersController {

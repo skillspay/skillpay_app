@@ -1,7 +1,6 @@
 import { Controller, Post, Body, Req, Headers, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
-import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { Request } from 'express';
 
@@ -11,7 +10,6 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @ApiBearerAuth('supabase-jwt')
-  @UseGuards(SupabaseAuthGuard)
   @Post('stripe/create-intent')
   @ApiOperation({ summary: 'Create Stripe PaymentIntent' })
   createStripeIntent(@Body('bookingId') bookingId: string) {
@@ -30,7 +28,6 @@ export class PaymentsController {
   }
 
   @ApiBearerAuth('supabase-jwt')
-  @UseGuards(SupabaseAuthGuard)
   @Post('paypal/create-order')
   @ApiOperation({ summary: 'Create PayPal Order' })
   createPayPalOrder(@Body('bookingId') bookingId: string) {
@@ -38,7 +35,6 @@ export class PaymentsController {
   }
 
   @ApiBearerAuth('supabase-jwt')
-  @UseGuards(SupabaseAuthGuard)
   @Post('paypal/capture-order')
   @ApiOperation({ summary: 'Capture PayPal Order' })
   capturePayPalOrder(@Body('orderId') orderId: string) {

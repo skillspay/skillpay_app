@@ -10,13 +10,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { HomeownersService } from './homeowners.service';
-import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/request-with-user.interface';
 
 @ApiTags('Homeowners')
 @ApiBearerAuth('supabase-jwt')
-@UseGuards(SupabaseAuthGuard)
 @Controller('homeowners')
 export class HomeownersController {
   constructor(private readonly homeownersService: HomeownersService) {}
