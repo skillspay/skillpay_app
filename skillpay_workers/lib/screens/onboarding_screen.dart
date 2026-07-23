@@ -53,7 +53,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 },
                 children: [
                   _buildPage(
-                    title: 'Welcome\nto SkillPay.',
+                    titleWidget: Image.asset(
+                      'assets/images/logo.png',
+                      height: 48,
+                      alignment: Alignment.centerLeft,
+                    ),
                     subtitle: 'Find the best and professional artisans for your job.',
                     imagePath: 'assets/images/onboarding_1.png',
                   ),
@@ -73,7 +77,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildPage({
-    required String title,
+    String? title,
+    Widget? titleWidget,
     required String subtitle,
     required String imagePath,
   }) {
@@ -83,14 +88,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 48),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
+          if (titleWidget != null) titleWidget,
+          if (title != null && titleWidget == null)
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+              ),
             ),
-          ),
           const SizedBox(height: 16),
           Text(
             subtitle,

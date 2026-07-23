@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'home_tab.dart';
 import 'jobs_tab.dart';
 import 'history_tab.dart';
 import 'messages_tab.dart';
 import 'settings_tab.dart';
 import 'profile_setup_modal.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/artisan_profile_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,100 +17,79 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
-  
-  // Tracking if we need to show the One Last Step modal
-  bool _needsProfileSetup = true;
-  
+  bool _needsProfileSetup = false;
   bool _isVerified = false;
   bool _isLoading = true;
+
+  final _profileService = ArtisanProfileService();
 
   late List<Widget> _tabs;
 
   @override
   void initState() {
     super.initState();
-    _checkVerificationStatus();
+    _checkProfileStatus();
   }
-  
-  Future<void> _checkVerificationStatus() async {
+
+  Future<void> _checkProfileStatus() async {
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        // Check verification from user_profiles
-        final res = await Supabase.instance.client
-            .from('user_profiles')
-            .select('is_verified')
-            .eq('id', user.id)
-            .maybeSingle();
-            
-        if (res != null && res['is_verified'] == true) {
-          setState(() {
-            _isVerified = true;
-          });
-        }
+      final profile = await _profileService.fetchProfile();
+      if (profile != null) {
+        final verificationStatus =
+            profile['verificationStatus']?.toString() ??
+            profile['verification_status']?.toString() ??
+            'UNVERIFIED';
+        _isVerified = verificationStatus == 'VERIFIED';
 
-        // Check profile completeness from worker_profiles
-        final workerRes = await Supabase.instance.client
-            .from('worker_profiles')
-            .select('profile_image_url, cover_letter')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-        // If the record doesn't exist yet or is missing image/cover_letter, show the modal
-        if (workerRes == null || 
-            workerRes['profile_image_url'] == null || 
-            workerRes['cover_letter'] == null) {
-          _needsProfileSetup = true;
-        } else {
-          _needsProfileSetup = false;
-        }
+        // Show setup modal if profile photo or bio is missing
+        final hasPhoto = (profile['profilePhoto'] ?? profile['profile_photo']) != null;
+        final hasBio = (profile['bio']?.toString() ?? '').isNotEmpty;
+        _needsProfileSetup = !hasPhoto || !hasBio;
+      } else {
+        _needsProfileSetup = true;
       }
-    } catch (e) {
-      // Handle error quietly
+    } catch (_) {
+      // Non-fatal — proceed without profile data
     } finally {
-      setState(() {
-        _isLoading = false;
-        _tabs = [
-          HomeTab(isVerified: _isVerified),
-          const JobsTab(),
-          const HistoryTab(),
-          const MessagesTab(),
-          const SettingsTab(),
-        ];
-      });
-      
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_needsProfileSetup && mounted) {
-          _showProfileSetupModal();
-        }
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _tabs = [
+            HomeTab(isVerified: _isVerified),
+            const JobsTab(),
+            const HistoryTab(),
+            const MessagesTab(),
+            const SettingsTab(),
+          ];
+        });
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_needsProfileSetup && mounted) {
+            _showProfileSetupModal();
+          }
+        });
+      }
     }
   }
-  
+
   void _showProfileSetupModal() {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          child: const ProfileSetupModal(),
-        );
-      },
-    ).then((_) {
-      // Logic after dialog is closed if needed
-    });
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: const ProfileSetupModal(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.black))
           : _tabs[_currentIndex],
       bottomNavigationBar: Container(
@@ -118,18 +98,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
+          onTap: (index) => setState(() => _currentIndex = index),
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: Colors.black,
           unselectedItemColor: Colors.grey,
           showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+          selectedLabelStyle:
+              const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          unselectedLabelStyle:
+              const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
           elevation: 0,
           items: const [
             BottomNavigationBarItem(

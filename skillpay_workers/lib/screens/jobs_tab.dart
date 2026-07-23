@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/jobs_service.dart';
+import '../models/job_model.dart';
 import 'job_details_screen.dart';
 
 class JobsTab extends StatefulWidget {
@@ -10,11 +11,12 @@ class JobsTab extends StatefulWidget {
 }
 
 class _JobsTabState extends State<JobsTab> {
-  int _selectedTabIndex = 0; // 0 for Best Matches, 1 for Recent Jobs
-  
-  List<dynamic> _jobs = [];
+  int _selectedTabIndex = 0;
+  List<JobModel> _jobs = [];
   bool _isLoading = true;
   String? _errorMessage;
+
+  final _jobsService = JobsService();
 
   @override
   void initState() {
@@ -29,28 +31,12 @@ class _JobsTabState extends State<JobsTab> {
     });
 
     try {
-      final data = await Supabase.instance.client
-          .from('jobs')
-          .select()
-          .order('created_at', ascending: false);
-          
-      if (mounted) {
-        setState(() {
-          _jobs = data;
-        });
-      }
+      final jobs = await _jobsService.fetchAvailableJobs();
+      if (mounted) setState(() => _jobs = jobs);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-        });
-      }
+      if (mounted) setState(() => _errorMessage = e.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -59,7 +45,6 @@ class _JobsTabState extends State<JobsTab> {
     return SafeArea(
       child: Column(
         children: [
-          // App Bar Area
           const Padding(
             padding: EdgeInsets.all(24.0),
             child: Row(
@@ -67,15 +52,12 @@ class _JobsTabState extends State<JobsTab> {
               children: [
                 Text(
                   'Jobs',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
-          
+
           // Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -96,10 +78,10 @@ class _JobsTabState extends State<JobsTab> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
-          // Custom Tab Bar
+
+          // Tab Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Row(
@@ -110,25 +92,42 @@ class _JobsTabState extends State<JobsTab> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
-          // Job List
+
           Expanded(
-            child: _isLoading 
+            child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _errorMessage != null
-                  ? Center(child: Text('Error: $_errorMessage', style: const TextStyle(color: Colors.red)))
-                  : _jobs.isEmpty
-                    ? const Center(child: Text('No jobs available at the moment.', style: TextStyle(color: Colors.grey)))
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                        itemCount: _jobs.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 16),
-                        itemBuilder: (context, index) {
-                          return _buildJobCard(context, _jobs[index]);
-                        },
-                      ),
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Error: $_errorMessage',
+                                style: const TextStyle(color: Colors.red)),
+                            const SizedBox(height: 12),
+                            TextButton(
+                                onPressed: _fetchJobs,
+                                child: const Text('Retry')),
+                          ],
+                        ),
+                      )
+                    : _jobs.isEmpty
+                        ? const Center(
+                            child: Text('No jobs available at the moment.',
+                                style: TextStyle(color: Colors.grey)))
+                        : RefreshIndicator(
+                            onRefresh: _fetchJobs,
+                            child: ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24.0, vertical: 8.0),
+                              itemCount: _jobs.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 16),
+                              itemBuilder: (context, index) =>
+                                  _buildJobCard(context, _jobs[index]),
+                            ),
+                          ),
           ),
         ],
       ),
@@ -136,13 +135,9 @@ class _JobsTabState extends State<JobsTab> {
   }
 
   Widget _buildTabItem({required String title, required int index}) {
-    bool isSelected = _selectedTabIndex == index;
+    final isSelected = _selectedTabIndex == index;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTabIndex = index;
-        });
-      },
+      onTap: () => setState(() => _selectedTabIndex = index),
       child: Container(
         padding: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
@@ -157,7 +152,8 @@ class _JobsTabState extends State<JobsTab> {
           title,
           style: TextStyle(
             color: isSelected ? Colors.black : Colors.grey,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontWeight:
+                isSelected ? FontWeight.bold : FontWeight.normal,
             fontSize: 14,
           ),
         ),
@@ -165,37 +161,9 @@ class _JobsTabState extends State<JobsTab> {
     );
   }
 
-  Widget _buildJobCard(BuildContext context, dynamic job) {
-    final title = job['title']?.toString() ?? 'Job Title';
-    final budgetStr = job['budget']?.toString() ?? '0.00';
-    final budget = '\$$budgetStr';
-    final location = job['location']?.toString() ?? 'Location not specified';
-    final description = job['description']?.toString() ?? 'No description available for this job.';
-    final timePosted = job['created_at'] != null 
-        ? _formatTimePosted(DateTime.parse(job['created_at'].toString()))
-        : 'Unknown time';
-        
-    // Tags could be a list or a comma separated string
-    List<String> tags = [];
-    if (job['category'] != null) {
-      tags.add(job['category'].toString());
-    }
-    // If there's an actual 'tags' field
-    if (job['tags'] != null) {
-      if (job['tags'] is List) {
-        tags.addAll(List<String>.from(job['tags']));
-      } else if (job['tags'] is String) {
-        tags.addAll(job['tags'].toString().split(',').map((e) => e.trim()));
-      }
-    }
-    
-    // Default mock tags if empty to keep UI looking nice
-    if (tags.isEmpty) {
-      tags = ['Engineering', 'Plumbing'];
-    }
-
-    // Limit tags for display
-    final displayTags = tags.take(3).toList();
+  Widget _buildJobCard(BuildContext context, JobModel job) {
+    final timePosted = _formatTimePosted(job.createdAt);
+    final tags = job.categoryName.isNotEmpty ? [job.categoryName] : ['General'];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -207,60 +175,61 @@ class _JobsTabState extends State<JobsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(job.title,
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Row(
             children: [
-              const Text(
-                'Budget: ',
-                style: TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.normal),
-              ),
-              Text(
-                budget,
-                style: const TextStyle(color: Colors.green, fontSize: 13, fontWeight: FontWeight.bold),
-              ),
+              const Text('Budget: ',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal)),
+              Text('\$${job.budget.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                      color: Colors.green,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 12),
-          if (displayTags.isNotEmpty) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: displayTags.map((tag) => _buildTag(tag)).toList(),
-            ),
-            const SizedBox(height: 12),
-          ],
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: tags.map(_buildTag).toList(),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.location_on_outlined, color: Colors.grey, size: 14),
+              const Icon(Icons.location_on_outlined,
+                  color: Colors.grey, size: 14),
               const SizedBox(width: 4),
               Expanded(
-                child: Text(
-                  location,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
+                child: Text(job.address,
+                    style:
+                        const TextStyle(color: Colors.grey, fontSize: 12)),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
-            description,
+            job.description,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
+            style: const TextStyle(
+                color: Colors.grey, fontSize: 12, height: 1.5),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Posted $timePosted', style: const TextStyle(color: Colors.grey, fontSize: 11)),
-              const Text('Proposal: 0', style: TextStyle(color: Colors.grey, fontSize: 11)), // Default mock proposal count
+              Text('Posted $timePosted',
+                  style:
+                      const TextStyle(color: Colors.grey, fontSize: 11)),
+              Text('Proposals: ${job.applicationCount}',
+                  style:
+                      const TextStyle(color: Colors.grey, fontSize: 11)),
             ],
           ),
           const SizedBox(height: 16),
@@ -268,18 +237,16 @@ class _JobsTabState extends State<JobsTab> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const JobDetailsScreen()),
-                    );
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const JobDetailsScreen()),
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFFFC107),
                     side: const BorderSide(color: Color(0xFFFFC107)),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   child: const Text('View'),
                 ),
@@ -293,8 +260,7 @@ class _JobsTabState extends State<JobsTab> {
                     foregroundColor: Colors.black,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   child: const Text('Apply'),
                 ),
@@ -313,29 +279,18 @@ class _JobsTabState extends State<JobsTab> {
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Text(
-        text,
-        style: TextStyle(color: Colors.grey[800], fontSize: 11),
-      ),
+      child:
+          Text(text, style: TextStyle(color: Colors.grey[800], fontSize: 11)),
     );
   }
 
   String _formatTimePosted(DateTime postedTime) {
-    final now = DateTime.now();
-    final difference = now.difference(postedTime);
-
-    if (difference.inDays > 1) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inDays == 1) {
-      return '1 day ago';
-    } else if (difference.inHours > 1) {
-      return '${difference.inHours} hours ago';
-    } else if (difference.inHours == 1) {
-      return '1 hour ago';
-    } else if (difference.inMinutes > 1) {
-      return '${difference.inMinutes} minutes ago';
-    } else {
-      return 'Just now';
-    }
+    final diff = DateTime.now().difference(postedTime);
+    if (diff.inDays > 1) return '${diff.inDays} days ago';
+    if (diff.inDays == 1) return '1 day ago';
+    if (diff.inHours > 1) return '${diff.inHours} hours ago';
+    if (diff.inHours == 1) return '1 hour ago';
+    if (diff.inMinutes > 1) return '${diff.inMinutes} minutes ago';
+    return 'Just now';
   }
 }

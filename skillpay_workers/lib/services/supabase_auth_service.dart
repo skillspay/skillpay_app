@@ -1,106 +1,63 @@
+// Compatibility wrapper — preserves the SupabaseAuthService class name used
+// across all existing screens while delegating to the new NestJS-aware AuthService.
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'auth_service.dart';
 
 class SupabaseAuthService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final _auth = AuthService();
 
-  // Sign Up
-  Future<AuthResponse> signUp({
+  /// Sign up a new artisan — creates Supabase auth account + syncs NestJS DB row.
+  Future<void> signUp({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
     required String phone,
-  }) async {
-    try {
-      // Sign up the user in Supabase Auth and pass profile data
-      // This requires a database trigger in Supabase to insert into user_profiles
-      final response = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'first_name': firstName,
-          'last_name': lastName,
-          'full_name': '$firstName $lastName',
-          'phone_number': phone,
-          'user_type': 'worker',
-        },
-      );
-      
-      return response;
-    } catch (e) {
-      rethrow;
-    }
+  }) {
+    return _auth.signUp(
+      email: email,
+      password: password,
+      firstName: firstName,
+      lastName: lastName,
+      phone: phone,
+    );
   }
 
-  // Login
-  Future<AuthResponse> login({
+  /// Sign in — Supabase auth + updates NestJS last_login.
+  Future<void> login({
     required String email,
     required String password,
-  }) async {
-    try {
-      final response = await _supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-      return response;
-    } catch (e) {
-      rethrow;
-    }
+  }) {
+    return _auth.signIn(email: email, password: password);
   }
 
-  // Sign Out
-  Future<void> signOut() async {
-    try {
-      await _supabase.auth.signOut();
-    } catch (e) {
-      rethrow;
-    }
-  }
+  /// Sign out.
+  Future<void> signOut() => _auth.signOut();
 
-  // Reset Password Request
-  Future<void> requestPasswordReset(String email) async {
-    try {
-      await _supabase.auth.resetPasswordForEmail(email);
-    } catch (e) {
-      rethrow;
-    }
-  }
+  /// Send password reset email via Supabase.
+  Future<void> requestPasswordReset(String email) =>
+      _auth.sendPasswordResetEmail(email);
 
-  // Handle OTP for password reset or email confirmation
+  /// Verify OTP (signup or recovery).
   Future<AuthResponse> verifyOTP({
     required String email,
     required String token,
     required OtpType type,
   }) async {
-    try {
-      final response = await _supabase.auth.verifyOTP(
-        email: email,
-        token: token,
-        type: type, // OtpType.signup or OtpType.recovery
-      );
-      return response;
-    } catch (e) {
-      rethrow;
-    }
+    final supabase = Supabase.instance.client;
+    return supabase.auth.verifyOTP(email: email, token: token, type: type);
   }
-  
-  // Update Password
+
+  /// Update password directly via Supabase Auth.
   Future<UserResponse> updatePassword(String newPassword) async {
-    try {
-      final response = await _supabase.auth.updateUser(
-        UserAttributes(
-          password: newPassword,
-        ),
-      );
-      return response;
-    } catch (e) {
-      rethrow;
-    }
+    return Supabase.instance.client.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
   }
 
-  // Listen to auth state changes
-  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
+  /// Stream of Supabase auth state changes.
+  Stream<AuthState> get authStateChanges => _auth.authStateChanges;
 
-  // Get Current User
-  User? get currentUser => _supabase.auth.currentUser;
+  /// Current authenticated Supabase user.
+  User? get currentUser => _auth.currentUser;
 }
