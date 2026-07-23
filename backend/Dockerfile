@@ -1,37 +1,26 @@
-FROM node:20-alpine AS builder
+FROM node:20-slim
+
+# Install OpenSSL explicitly — required by Prisma query engine
+RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install dependencies
+# Install all deps (including devDeps needed for build)
 COPY package*.json ./
 RUN npm ci
 
-# Copy source and generate Prisma client
+# Copy prisma schema and generate client
 COPY prisma ./prisma/
 RUN npx prisma generate
 
-# Build TypeScript
+# Copy source and build
 COPY . .
 RUN npm run build
 
-# ─── Production image ─────────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+# Remove devDeps after build
+RUN npm prune --omit=dev
 
-WORKDIR /app
-
-# Only install production deps
-COPY package*.json ./
-RUN npm ci --omit=dev
-
-# Copy built app and Prisma client
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY prisma ./prisma/
-
-# Railway injects PORT — default to 3000
-ENV PORT=3000
 EXPOSE 3000
 
-# Run migrations then start
-CMD npx prisma migrate deploy && node dist/main
+# Run migrations then start the app
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
