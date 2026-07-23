@@ -15,8 +15,15 @@ export class HomeownersService {
     let profile = await this.prisma.homeowner.findUnique({
       where: { userId },
       include: {
-        user: { select: { id: true, email: true, phone: true, role: true } },
-        addresses: { orderBy: { isDefault: 'desc' } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            role: true,
+            addresses: { orderBy: { isDefault: 'desc' } },
+          },
+        },
       },
     });
 
@@ -33,8 +40,15 @@ export class HomeownersService {
           fullName: user.email.split('@')[0],
         },
         include: {
-          user: { select: { id: true, email: true, phone: true, role: true } },
-          addresses: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              phone: true,
+              role: true,
+              addresses: true,
+            },
+          },
         },
       });
     }
@@ -116,8 +130,14 @@ export class HomeownersService {
         ...(dob ? { dob: new Date(dob) } : {}),
       },
       include: {
-        user: { select: { id: true, email: true, phone: true } },
-        addresses: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            addresses: true,
+          },
+        },
       },
     });
   }
@@ -125,9 +145,8 @@ export class HomeownersService {
   // ─── Addresses ────────────────────────────────────────────────────────────
 
   async getAddresses(userId: string) {
-    const homeowner = await this.getProfile(userId);
     return this.prisma.address.findMany({
-      where: { userId: homeowner.userId },
+      where: { userId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
   }

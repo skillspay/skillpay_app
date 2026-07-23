@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApplicationStatus } from '@prisma/client';
 
 @Injectable()
 export class ChatService {
@@ -54,32 +55,46 @@ export class ChatService {
         OR: [
           ...(homeowner ? [{ job: { homeownerId: homeowner.id } }] : []),
           ...(artisan
-            ? [{ job: { applications: { some: { artisanId: artisan.id, status: { in: ['ACCEPTED', 'PENDING'] } } } } }]
+            ? [{
+                job: {
+                  applications: {
+                    some: {
+                      artisanId: artisan.id,
+                      status: {
+                        in: [
+                          ApplicationStatus.ACCEPTED,
+                          ApplicationStatus.PENDING,
+                        ],
+                      },
+                    },
+                  },
+                },
+              }]
             : []),
         ],
       },
       include: {
         job: {
           include: {
-            homeowner: { select: { id: true, fullName: true, profilePhoto: true } },
+            homeowner: {
+              select: { id: true, fullName: true, profilePhoto: true },
+            },
             category: { select: { id: true, name: true } },
           },
         },
         messages: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: 'desc' as const },
           take: 1,
           include: { sender: { select: { id: true, role: true } } },
         },
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { updatedAt: 'desc' as const },
     });
 
     // Shape into a format the Flutter app expects
-    return conversations.map((conv) => {
-      const lastMsg = conv.messages[0];
-      const otherParty = artisan
-        ? conv.job.homeowner
-        : null;
+    return conversations.map((conv: any) => {
+      const lastMsg = conv.messages?.[0];
+      const otherParty = artisan ? conv.job?.homeowner : null;
 
       return {
         id: conv.id,
