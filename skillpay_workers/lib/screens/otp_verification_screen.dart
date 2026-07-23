@@ -1,111 +1,185 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'reset_password_screen.dart';
+import 'dashboard_screen.dart';
+import '../services/auth_service.dart';
+
+enum OtpPurpose { signup, passwordReset }
 
 class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({super.key});
+  final String email;
+  final OtpPurpose purpose;
+
+  const OtpVerificationScreen({
+    super.key,
+    required this.email,
+    this.purpose = OtpPurpose.passwordReset,
+  });
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers =
+      List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+
   bool _isFormValid = false;
-  
+  bool _isLoading = false;
+  String? _errorMessage;
+
   Timer? _timer;
   int _secondsRemaining = 0;
   bool _canResend = true;
 
+  final _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
-    for (var controller in _controllers) {
-      controller.addListener(_validateForm);
+    for (final c in _controllers) {
+      c.addListener(_validateForm);
     }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
+    for (final c in _controllers) c.dispose();
+    for (final f in _focusNodes) f.dispose();
     super.dispose();
   }
 
-  void _startTimer() {
+  void _validateForm() {
+    final valid = _controllers.every((c) => c.text.isNotEmpty);
+    if (valid != _isFormValid) setState(() => _isFormValid = valid);
+  }
+
+  String get _otp => _controllers.map((c) => c.text).join();
+
+  void _startResendTimer() {
     setState(() {
-      _secondsRemaining = 45;
+      _secondsRemaining = 60;
       _canResend = false;
     });
-    
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (_secondsRemaining > 0) {
-        setState(() {
-          _secondsRemaining--;
-        });
+        setState(() => _secondsRemaining--);
       } else {
-        _timer?.cancel();
-        setState(() {
-          _canResend = true;
-        });
+        t.cancel();
+        setState(() => _canResend = true);
       }
     });
   }
 
-  void _validateForm() {
-    bool isValid = _controllers.every((c) => c.text.isNotEmpty);
-    if (isValid != _isFormValid) {
-      setState(() {
-        _isFormValid = isValid;
-      });
+  Future<void> _handleResend() async {
+    _startResendTimer();
+    try {
+      if (widget.purpose == OtpPurpose.signup) {
+        await Supabase.instance.client.auth.resend(
+          type: OtpType.signup,
+          email: widget.email,
+        );
+      } else {
+        await _authService.sendPasswordResetEmail(widget.email);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Code resent — check your email'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
+      }
     }
   }
 
-  void _handleContinue() {
+  Future<void> _handleContinue() async {
     if (!_isFormValid) return;
-    
-    final otpStr = _controllers.map((c) => c.text).join();
-    
-    // Mocking error condition vs success
-    if (otpStr == "111111") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Wrong code! Requesting again...', style: TextStyle(fontWeight: FontWeight.w500)),
-            ],
-          ),
-          backgroundColor: const Color(0xFFF44336), // Red color
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 3),
-        ),
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final otpType = widget.purpose == OtpPurpose.signup
+          ? OtpType.signup
+          : OtpType.recovery;
+
+      final response = await Supabase.instance.client.auth.verifyOTP(
+        email: widget.email,
+        token: _otp,
+        type: otpType,
       );
-    } else {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ResetPasswordScreen()),
-      );
+
+      if (response.session == null) {
+        throw Exception('Verification failed. Please try again.');
+      }
+
+      if (!mounted) return;
+
+      if (widget.purpose == OtpPurpose.signup) {
+        // Email confirmed — sign in is now active, sync NestJS user row
+        final user = response.user;
+        if (user != null) {
+          try {
+            final authService = AuthService();
+            // Trigger NestJS register sync now that we have a session
+            await authService.syncUserAfterVerification(
+              email: user.email ?? widget.email,
+              fullName: user.userMetadata?['full_name']?.toString() ?? '',
+              phone: user.userMetadata?['phone']?.toString() ?? '',
+              role: user.userMetadata?['role']?.toString() ?? 'ARTISAN',
+            );
+          } catch (_) {
+            // Non-fatal — will retry on next signIn
+          }
+        }
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          (route) => false,
+        );
+      } else {
+        // Password reset — go to new password screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ResetPasswordScreen()),
+        );
+      }
+    } on AuthException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (e) {
+      setState(
+          () => _errorMessage = e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   String _formatTime(int seconds) {
-    int m = seconds ~/ 60;
-    int s = seconds % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.purpose == OtpPurpose.signup
+        ? 'Confirm Email'
+        : 'Forgot Password';
+    final subtitle = widget.purpose == OtpPurpose.signup
+        ? 'Enter the 6-digit code sent to\n${widget.email}'
+        : 'Enter OTP code sent to your email';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -124,7 +198,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 16),
-                // Logo
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(
@@ -135,56 +208,42 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     'assets/images/logo.png',
                     width: 60,
                     height: 60,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.handyman,
-                      size: 60,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'SkillPay',
-                  style: TextStyle(
-                    color: Color(0xFFFFC107),
-                    fontFamily: 'cursive',
-                    fontSize: 20,
+                    errorBuilder: (_, __, ___) => const Icon(
+                        Icons.handyman,
+                        size: 60,
+                        color: Colors.black),
                   ),
                 ),
                 const SizedBox(height: 48),
-                // Title
-                const Text(
-                  'Forget Password',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                Text(
+                  title,
+                  style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Enter OTP code sent to your email',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
-                
+
                 // OTP Fields
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(
-                    6,
-                    (index) => SizedBox(
+                  children: List.generate(6, (i) {
+                    return SizedBox(
                       width: 48,
                       height: 56,
                       child: TextField(
-                        controller: _controllers[index],
-                        focusNode: _focusNodes[index],
+                        controller: _controllers[i],
+                        focusNode: _focusNodes[i],
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(1),
                           FilteringTextInputFormatter.digitsOnly,
@@ -193,120 +252,112 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           contentPadding: EdgeInsets.zero,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide:
+                                BorderSide(color: Colors.grey[300]!),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(
+                              color: _errorMessage != null
+                                  ? Colors.red.shade300
+                                  : Colors.grey[300]!,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFFFC107), width: 2),
+                            borderSide: const BorderSide(
+                                color: Color(0xFFFFC107), width: 2),
                           ),
                         ),
                         onChanged: (value) {
-                          if (value.isNotEmpty) {
-                            if (index < 5) {
-                              _focusNodes[index + 1].requestFocus();
-                            } else {
-                              _focusNodes[index].unfocus();
-                            }
-                          } else {
-                            if (index > 0) {
-                              _focusNodes[index - 1].requestFocus();
-                            }
+                          if (value.isNotEmpty && i < 5) {
+                            _focusNodes[i + 1].requestFocus();
+                          } else if (value.isEmpty && i > 0) {
+                            _focusNodes[i - 1].requestFocus();
                           }
                         },
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 ),
-                const SizedBox(height: 24),
-                
-                // Resend or Timer
+
+                const SizedBox(height: 16),
+
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Text(_errorMessage!,
+                        style: TextStyle(
+                            color: Colors.red.shade700, fontSize: 13)),
+                  ),
+
+                // Resend row
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (!_canResend) ...[
-                      const Icon(Icons.check_circle, color: Colors.green, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Code sent - ${_formatTime(_secondsRemaining)}',
-                        style: const TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
+                      const Icon(Icons.check_circle,
+                          color: Colors.green, size: 16),
+                      const SizedBox(width: 6),
+                      Text('Code sent – ${_formatTime(_secondsRemaining)}',
+                          style: const TextStyle(
+                              color: Colors.grey, fontSize: 13)),
                     ] else ...[
-                      const Icon(Icons.error_outline, color: Colors.grey, size: 16),
-                      const SizedBox(width: 8),
-                      const Text(
-                        "Didn't get the code? ",
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
+                      const Text("Didn't get the code? ",
+                          style:
+                              TextStyle(color: Colors.grey, fontSize: 13)),
                       GestureDetector(
-                        onTap: _startTimer,
-                        child: const Text(
-                          'Resend',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        onTap: _handleResend,
+                        child: const Text('Resend',
+                            style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600)),
                       ),
-                    ]
+                    ],
                   ],
                 ),
-                const SizedBox(height: 24),
-                
-                // Continue Button
+
+                const SizedBox(height: 32),
+
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isFormValid ? _handleContinue : null,
+                    onPressed: (_isFormValid && !_isLoading)
+                        ? _handleContinue
+                        : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isFormValid 
-                          ? const Color(0xFFFFC107) 
+                      backgroundColor: _isFormValid
+                          ? const Color(0xFFFFC107)
                           : const Color(0xFFFDE69F),
                       foregroundColor: Colors.black,
                       disabledBackgroundColor: const Color(0xFFFDE69F),
                       disabledForegroundColor: Colors.black54,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                          borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text(
-                      'Continue',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.black)),
+                          )
+                        : const Text('Continue',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ),
-                
-                // Spacing to push terms to bottom
-                SizedBox(height: MediaQuery.of(context).size.height * 0.20),
-                
-                // Terms and Policies
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: const TextSpan(
-                    style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
-                    children: [
-                      TextSpan(text: 'By logging in, you agree to SkillPay\n'),
-                      TextSpan(
-                        text: 'Terms of Service',
-                        style: TextStyle(color: Colors.black, decoration: TextDecoration.underline),
-                      ),
-                      TextSpan(text: ' and '),
-                      TextSpan(
-                        text: 'Privacy Policy.',
-                        style: TextStyle(color: Colors.black, decoration: TextDecoration.underline),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
               ],
             ),
           ),

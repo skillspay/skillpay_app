@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'email_confirmation_screen.dart';
 import 'login_screen.dart';
+import 'otp_verification_screen.dart';
 import '../services/supabase_auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -77,11 +78,9 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => EmailConfirmationScreen(
+            builder: (_) => OtpVerificationScreen(
               email: _emailController.text.trim(),
-              firstName: _firstNameController.text.trim(),
-              lastName: _lastNameController.text.trim(),
-              phone: _phoneController.text.trim(),
+              purpose: OtpPurpose.signup,
             ),
           ),
         );

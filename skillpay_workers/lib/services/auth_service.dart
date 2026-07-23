@@ -13,6 +13,8 @@ class AuthService {
 
   // ─── Registration ─────────────────────────────────────────────────────────
 
+  /// Creates the Supabase auth account and sends a confirmation email.
+  /// NestJS sync happens in signIn() after email is confirmed and JWT exists.
   Future<void> signUp({
     required String email,
     required String password,
@@ -30,18 +32,10 @@ class AuthService {
           'role': 'ARTISAN',
         },
       );
-
-      // Sync user row in NestJS Postgres
-      await _api.post('/auth/register', body: {
-        'email': email,
-        'fullName': '$firstName $lastName',
-        'phone': phone,
-        'role': 'ARTISAN',
-      });
+      // Confirmation email sent — NestJS user row created on first signIn().
     } on AuthException catch (e) {
       throw Exception(e.message);
     } catch (e) {
-      if (e is ApiException) throw Exception(e.message);
       throw Exception(e.toString());
     }
   }
@@ -62,16 +56,38 @@ class AuthService {
 
   // ─── Sign in ──────────────────────────────────────────────────────────────
 
+  /// Signs in via Supabase (JWT guaranteed — email already confirmed).
+  /// Upserts the NestJS user row on first login, updates last_login after.
   Future<void> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      await _supabase.auth.signInWithPassword(
+      final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
-      await _api.post('/auth/login');
+
+      final user = response.user;
+      if (user != null) {
+        // Upsert NestJS user row — idempotent, safe on every login.
+        try {
+          await _api.post('/auth/register', body: {
+            'email': user.email ?? email,
+            'fullName': user.userMetadata?['full_name']?.toString() ?? '',
+            'phone': user.userMetadata?['phone']?.toString() ?? '',
+            'role': 'ARTISAN',
+          });
+        } on ApiException {
+          // Non-fatal — proceed even if sync fails
+        }
+      }
+
+      try {
+        await _api.post('/auth/login');
+      } on ApiException {
+        // Non-fatal
+      }
     } on AuthException catch (e) {
       throw Exception(e.message);
     } catch (e) {
@@ -135,7 +151,27 @@ class AuthService {
     }
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
+  // ─── Post-verification sync ───────────────────────────────────────────────
+
+  /// Called after OTP email confirmation succeeds.
+  /// Session is now active so JWT is available for the API call.
+  Future<void> syncUserAfterVerification({
+    required String email,
+    required String fullName,
+    required String phone,
+    required String role,
+  }) async {
+    try {
+      await _api.post('/auth/register', body: {
+        'email': email,
+        'fullName': fullName,
+        'phone': phone,
+        'role': role.toUpperCase(),
+      });
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
 
   User? get currentUser => _supabase.auth.currentUser;
   bool get isSignedIn => _supabase.auth.currentSession != null;
