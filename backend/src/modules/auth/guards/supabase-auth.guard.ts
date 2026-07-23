@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { IS_PUBLIC_KEY } from '../../../common/decorators/public.decorator';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -81,8 +82,8 @@ export class SupabaseAuthGuard implements CanActivate {
     return true;
   }
 
-  private extractToken(request: RequestWithUser): string | null {
-    const authHeader = request.headers['authorization'];
+  private extractToken(request: any): string | null {
+    const authHeader = request.headers?.authorization || request.headers?.['authorization'];
     if (!authHeader) return null;
     const [scheme, token] = authHeader.split(' ');
     if (scheme?.toLowerCase() !== 'bearer' || !token) return null;
