@@ -20,6 +20,7 @@ import { Request } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { SupabaseAuthGuard } from './guards/supabase-auth.guard';
 import { RegisterDto, UpdateFcmTokenDto } from './dto/register.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -27,6 +28,7 @@ import { AuthenticatedUser } from '../../common/interfaces/request-with-user.int
 
 @ApiTags('Auth')
 @ApiBearerAuth('supabase-jwt')
+@UseGuards(SupabaseAuthGuard)
 @Controller('auth')
 export class AuthController {
   constructor(

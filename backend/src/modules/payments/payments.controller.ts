@@ -1,10 +1,12 @@
 import { Controller, Post, Body, Req, Headers, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { Request } from 'express';
 
 @ApiTags('Payments')
+@UseGuards(SupabaseAuthGuard)
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}

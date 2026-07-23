@@ -1,3 +1,4 @@
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
@@ -7,6 +8,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { Role } from '@prisma/client';
 
 @ApiTags('Categories')
+@UseGuards(SupabaseAuthGuard)
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}

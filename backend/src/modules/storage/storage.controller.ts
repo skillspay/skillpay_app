@@ -15,10 +15,12 @@ import {
 } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { StorageService } from './storage.service';
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { v4 as uuidv4 } from 'uuid';
 
 @ApiTags('Storage')
 @ApiBearerAuth('supabase-jwt')
+@UseGuards(SupabaseAuthGuard)
 @Controller('storage')
 export class StorageController {
   constructor(

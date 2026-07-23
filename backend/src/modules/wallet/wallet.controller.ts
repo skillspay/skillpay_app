@@ -1,11 +1,13 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { WalletService } from './wallet.service';
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/request-with-user.interface';
 
 @ApiTags('Wallet')
 @ApiBearerAuth('supabase-jwt')
+@UseGuards(SupabaseAuthGuard)
 @Controller('wallet')
 export class WalletController {
   constructor(private readonly walletService: WalletService) {}

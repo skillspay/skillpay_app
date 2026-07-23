@@ -1,3 +1,4 @@
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
@@ -9,7 +10,7 @@ import { Role } from '@prisma/client';
 
 @ApiTags('Admin')
 @ApiBearerAuth('supabase-jwt')
-@UseGuards(RolesGuard)
+@UseGuards(SupabaseAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('admin')
 export class AdminController {

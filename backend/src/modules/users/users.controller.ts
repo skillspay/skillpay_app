@@ -1,3 +1,4 @@
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import {
   Controller,
   Get,
@@ -23,7 +24,7 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth('supabase-jwt')
-@UseGuards(RolesGuard)
+@UseGuards(SupabaseAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('users')
 export class UsersController {

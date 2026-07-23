@@ -11,12 +11,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { ArtisansService } from './artisans.service';
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/request-with-user.interface';
 import { VerificationDocumentType } from '@prisma/client';
 
 @ApiTags('Artisans')
 @ApiBearerAuth('supabase-jwt')
+@UseGuards(SupabaseAuthGuard)
 @Controller('artisans')
 export class ArtisansController {
   constructor(private readonly artisansService: ArtisansService) {}
