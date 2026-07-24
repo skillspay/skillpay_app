@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:skillpay/screens/onboarding_screen.dart';
 import 'package:skillpay/screens/main_navigation_screen.dart';
+import 'package:skillpay/screens/login_screen.dart';
+import 'package:skillpay/services/biometric_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -47,36 +49,50 @@ class _SplashScreenState extends State<SplashScreen>
     _animationController.forward();
   }
 
-  late final StreamSubscription<AuthState> _authStateSubscription;
-
   Future<void> _checkAuthState() async {
     // Wait for the animation to gracefully complete
     await Future.delayed(const Duration(milliseconds: 2500));
 
     if (!mounted) return;
 
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      if (!mounted) return;
+    final session = Supabase.instance.client.auth.currentSession;
+    
+    if (session != null) {
+      // Check if biometrics is enabled
+      final isBiometricEnabled = await BiometricService.instance.isBiometricEnabled();
       
-      final session = data.session;
-      
-      // Navigate based on session presence
-      if (session != null) {
+      if (isBiometricEnabled) {
+        final authenticated = await BiometricService.instance.authenticate('Verify your identity to open Skillpay');
+        if (!mounted) return;
+        
+        if (authenticated) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          );
+        } else {
+          // Failed biometric or canceled: go to Login Screen so they can type their password
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        }
+      } else {
+        // Biometrics not enabled, go straight to dashboard
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
         );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
       }
-    });
+    } else {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
-    _authStateSubscription.cancel();
     super.dispose();
   }
 

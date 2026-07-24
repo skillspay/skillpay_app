@@ -6,8 +6,7 @@ import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/widgets/auth_widgets.dart';
 import 'package:skillpay/services/jobs_service.dart';
 import 'package:skillpay/services/customer_profile_service.dart';
-import 'package:skillpay/models/job_model.dart';
-import 'package:uuid/uuid.dart';
+
 
 class CreateJobScreen extends StatefulWidget {
   const CreateJobScreen({super.key});
@@ -103,21 +102,14 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final job = JobModel(
-        id: const Uuid().v4(), // Generate temporary ID, Supabase will generate a real one but we need it for the model
+      await _jobsService.createJob(
         title: _titleController.text.trim(),
         description: _detailsController.text.trim(),
-        category: _selectedCategory ?? 'Cleaning', // Default safe category
-        location: _selectedLocation ?? 'Location not provided',
+        address: _selectedLocation ?? 'Location not provided',
         budget: double.tryParse(_budgetController.text.replaceAll('\$', '').trim()) ?? 0.0,
-        timeline: _selectedTimeline ?? 'Flexible',
-        status: 'pending',
-        proposalCount: 0,
-        customerId: '', // Set by the service
-        createdAt: DateTime.now(),
+        preferredDate: _selectedTimeline ?? 'Flexible',
+        categoryId: '', // Ideally we need to map category name to ID
       );
-
-      await _jobsService.createJob(job);
       
       if (mounted) {
         Navigator.pop(context, true); // Return true to refresh list

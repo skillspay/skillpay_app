@@ -3,8 +3,54 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/change_password_screen.dart';
 
-class SecurityScreen extends StatelessWidget {
+import 'package:skillpay/services/biometric_service.dart';
+
+class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key});
+
+  @override
+  State<SecurityScreen> createState() => _SecurityScreenState();
+}
+
+class _SecurityScreenState extends State<SecurityScreen> {
+  bool _isBiometricEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricSettings();
+  }
+
+  Future<void> _loadBiometricSettings() async {
+    final enabled = await BiometricService.instance.isBiometricEnabled();
+    setState(() {
+      _isBiometricEnabled = enabled;
+    });
+  }
+
+  Future<void> _toggleBiometrics(bool value) async {
+    if (value) {
+      // Prompt user to authenticate before enabling
+      final available = await BiometricService.instance.isBiometricAvailable();
+      if (!available) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometrics are not available or set up on this device.')),
+        );
+        return;
+      }
+      
+      final authenticated = await BiometricService.instance.authenticate('Verify your identity to enable biometric login');
+      if (!authenticated) {
+        return; // User canceled or failed
+      }
+    }
+    
+    await BiometricService.instance.setBiometricEnabled(value);
+    setState(() {
+      _isBiometricEnabled = value;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,13 +88,11 @@ class SecurityScreen extends StatelessWidget {
             },
           ),
           
-          _buildSecurityOption(
-            context: context,
-            icon: Icons.fingerprint_rounded, // Mockup uses a target/auth icon, fingerprint is a good substitute
-            title: 'Two-Factor Authentication',
-            onTap: () {
-              // Placeholder for 2FA settings toggle or setup
-            },
+          _buildSecurityToggle(
+            icon: Icons.fingerprint_rounded,
+            title: 'Biometric Login',
+            value: _isBiometricEnabled,
+            onChanged: _toggleBiometrics,
           ),
         ],
       ),
@@ -93,6 +137,46 @@ class SecurityScreen extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecurityToggle({
+    required IconData icon,
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF0F0F0), width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.textDark, size: 22),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: AppColors.primary,
+            ),
+          ],
         ),
       ),
     );

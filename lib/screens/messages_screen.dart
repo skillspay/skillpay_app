@@ -20,9 +20,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
   @override
   void initState() {
     super.initState();
-    _chatsFuture = _messagesService.fetchChats();
+    _loadChats();
   }
 
+  void _loadChats() {
+    setState(() {
+      _chatsFuture = _messagesService.fetchConversations();
+    });
+  }
+  
   // Removed static mock messages to ensure production data accurately reflects the database state.
 
   @override
@@ -152,9 +158,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
         String name = chat.artisanName;
         String lastMsg = chat.lastMessage;
         String time = chat.timeText;
-        String imagePath = chat.artisanAvatarUrl;
+        String? imagePath = chat.artisanAvatarUrl;
         bool isOnline = false; // Add real online status lookup if needed later
-        bool isNetworkImage = imagePath.startsWith('http');
+        bool isNetworkImage = imagePath?.startsWith('http') ?? false;
         
         return InkWell(
           onTap: () {
@@ -186,12 +192,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: const Color(0xFFF5F5F5),
-                        image: DecorationImage(
-                          image: isNetworkImage
-                              ? NetworkImage(imagePath) as ImageProvider
-                              : AssetImage(imagePath),
-                          fit: BoxFit.cover,
-                        ),
+                        image: imagePath != null && imagePath.isNotEmpty
+                            ? DecorationImage(
+                                image: isNetworkImage
+                                    ? NetworkImage(imagePath) as ImageProvider
+                                    : AssetImage(imagePath),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
                     ),
                     if (isOnline)

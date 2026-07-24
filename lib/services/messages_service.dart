@@ -130,8 +130,7 @@ class MessagesService {
           ),
           callback: (payload) {
             try {
-              final newRecord =
-                  payload.newRecord as Map<String, dynamic>;
+              final newRecord = payload.newRecord;
               onMessage(MessageModel.fromMap(newRecord));
             } catch (e) {
               debugPrint('Realtime parse error: $e');

@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:skillpay/main.dart';
+import 'package:flutter/material.dart';
+import 'package:skillpay/screens/login_screen.dart';
 
 /// A singleton HTTP client that:
 ///   - Reads the NestJS base URL from .env (API_URL)
@@ -39,19 +42,7 @@ class ApiClient {
     return null;
   }
 
-  Map<String, String> _headers({bool multipart = false}) {
-    final headers = <String, String>{
-      HttpHeaders.acceptHeader: 'application/json',
-    };
-    if (!multipart) {
-      headers[HttpHeaders.contentTypeHeader] = 'application/json';
-    }
-    final token = _token;
-    if (token != null) {
-      headers[HttpHeaders.authorizationHeader] = 'Bearer $token';
-    }
-    return headers;
-  }
+
 
   Future<Map<String, String>> _asyncHeaders({bool multipart = false}) async {
     final headers = <String, String>{
@@ -144,7 +135,14 @@ class ApiClient {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       try {
-        return jsonDecode(body);
+        final decoded = jsonDecode(body);
+        // Unwrap NestJS TransformInterceptor envelope: { success: true, data: <payload> }
+        if (decoded is Map<String, dynamic> &&
+            decoded.containsKey('success') &&
+            decoded.containsKey('data')) {
+          return decoded['data'];
+        }
+        return decoded;
       } catch (_) {
         return body; // Return raw string if not JSON
       }
@@ -158,6 +156,19 @@ class ApiClient {
           decoded['error']?.toString() ??
           message;
     } catch (_) {}
+
+    // Handle global 401 Unauthorized
+    if ((response.statusCode == 401 || response.statusCode == 403) &&
+        message != 'No authorization token provided') {
+      debugPrint('[API] Session invalid — signing out and redirecting to login');
+      try {
+        Supabase.instance.client.auth.signOut();
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      } catch (_) {}
+    }
 
     throw ApiException(message: message, statusCode: response.statusCode);
   }

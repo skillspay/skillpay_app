@@ -6,6 +6,8 @@ import 'package:skillpay/services/push_notification_service.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/splash_screen.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -34,6 +36,7 @@ class SkillpayApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Skillpay',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       home: const SplashScreen(),

@@ -105,12 +105,12 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
               return _buildProposalCard(context, {
                 'name': prop.artisanName,
                 'location': prop.artisanLocation,
-                'badges': prop.artisanBadges,
-                'bio': prop.coverLetter.isNotEmpty ? prop.coverLetter : prop.artisanBio,
+                'badges': [], // Or extract from categories
+                'bio': prop.proposal.isNotEmpty ? prop.proposal : prop.artisanBio,
                 'rating': prop.artisanRating,
-                'jobsCompleted': prop.artisanJobsCompleted,
-                'imagePath': prop.artisanAvatarUrl, // Might break if it's an HTTP url and we're using AssetImage
-                'isNetworkImage': prop.artisanAvatarUrl.startsWith('http'),
+                'jobsCompleted': prop.artisanCompletedJobs,
+                'imagePath': prop.artisanAvatarUrl, 
+                'isNetworkImage': prop.artisanAvatarUrl?.startsWith('http') ?? false,
               });
             },
           );

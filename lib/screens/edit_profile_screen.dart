@@ -76,16 +76,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
+      String? uploadedPhotoUrl;
+
+      // 1. Upload new photo first if selected — get the URL back
       if (_newProfileImage != null) {
-        await _authService.uploadProfileImage(_newProfileImage!);
+        uploadedPhotoUrl = await _authService.uploadProfileImage(_newProfileImage!);
+        // Update local state immediately so the image shows after save
+        if (mounted) setState(() => _currentImageUrl = uploadedPhotoUrl);
       }
 
+      // 2. Save all profile fields + photo URL in one request
       await _authService.updateUserProfile(
         fullName: _fullNameController.text.trim(),
         phone: _phoneController.text.trim(),
         dateOfBirth: _dobController.text.trim().isNotEmpty
             ? _dobController.text.trim()
             : null,
+        profilePhoto: uploadedPhotoUrl ?? _currentImageUrl,
       );
 
       if (mounted) {

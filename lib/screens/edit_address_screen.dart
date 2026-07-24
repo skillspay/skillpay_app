@@ -70,15 +70,10 @@ class _EditAddressScreenState extends State<EditAddressScreen> {
     setState(() => _isLoading = true);
     try {
       final service = CustomerProfileService();
-      await service.addSavedAddress({
-        'street': _addressController.text.trim(),
-        'city': cityValue,
-        'state': stateValue,
-        'country': countryValue,
-        'phone': '$_selectedPhoneCode ${_phoneController.text.trim()}',
-        'full_address':
-            '${_addressController.text.trim()}, $cityValue, $stateValue, $countryValue',
-      });
+      await service.addAddress(
+        label: 'Home', // Or allow user to input
+        address: '${_addressController.text.trim()}, $cityValue, $stateValue, $countryValue',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -56,20 +56,40 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
 
     try {
       final position = await _locationService.getCurrentLocation();
-      final coords = _locationService.formatCoordinates(position);
+      final placemarks = await _locationService.getAddressFromCoordinates(position);
+      
+      String addressText = _locationService.formatCoordinates(position);
+      String townText = '';
+      String stateText = '';
+      
+      if (placemarks.isNotEmpty) {
+        final pm = placemarks.first;
+        // Construct street address (e.g., '123 Main St')
+        addressText = [pm.subThoroughfare, pm.thoroughfare]
+            .where((s) => s != null && s.isNotEmpty)
+            .join(' ');
+        if (addressText.isEmpty) {
+          addressText = pm.street ?? addressText;
+        }
+        
+        townText = pm.locality ?? pm.subLocality ?? '';
+        stateText = pm.administrativeArea ?? '';
+      }
 
-      // Pre-fill address with coordinates; town & state left for user to confirm.
       if (!mounted) return;
       setState(() {
-        _addressController.text = coords;
+        _addressController.text = addressText;
+        if (townText.isNotEmpty) _townController.text = townText;
+        if (stateText.isNotEmpty) _stateController.text = stateText;
         _isLocating = false;
       });
 
-      // Show a snackbar guiding the user to fill in town/state.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Location detected! Please fill in your town and state.',
+            placemarks.isNotEmpty 
+              ? 'Location detected! Please confirm your details.'
+              : 'Location detected! Please fill in your town and state.',
             style: GoogleFonts.outfit(fontSize: 13),
           ),
           backgroundColor: AppColors.textDark,
@@ -98,11 +118,11 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
           '${_addressController.text.trim()}, ${_townController.text.trim()}, ${_stateController.text.trim()}';
 
       await _authService.finishProfileSetup(
-        email: widget.email,
         fullName: widget.fullName,
         phone: widget.phone,
         address: fullAddress,
-        userType: widget.userType,
+        latitude: null, // Optionally use Geolocator if implemented
+        longitude: null,
       );
 
       if (!mounted) return;

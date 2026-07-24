@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class LocationService {
   /// Request location permission and return the current [Position].
@@ -40,13 +41,24 @@ class LocationService {
   }
 
   /// Builds a simple human-readable address label from coordinates.
-  /// For a real reverse-geocode, integrate the `geocoding` package or a
-  /// Maps API. This returns a lat/lng string as a safe fallback that can
-  /// be stored and displayed until geocoding is wired up.
   String formatCoordinates(Position position) {
     final lat = position.latitude.toStringAsFixed(6);
     final lng = position.longitude.toStringAsFixed(6);
     debugPrint('Device location: $lat, $lng');
     return '$lat, $lng';
+  }
+
+  /// Get the actual address placemarks using geocoding.
+  Future<List<Placemark>> getAddressFromCoordinates(Position position) async {
+    try {
+      List<Placemark> placemarks = await Geocoding().placemarkFromCoordinates(
+        position.latitude, 
+        position.longitude,
+      );
+      return placemarks;
+    } catch (e) {
+      debugPrint('Geocoding error: $e');
+      return [];
+    }
   }
 }

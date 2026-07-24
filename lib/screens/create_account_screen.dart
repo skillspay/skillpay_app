@@ -56,7 +56,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           password: _passwordController.text,
           fullName: '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
           phone: _phoneController.text.trim(),
-          role: 'customer', // Currently defaulting to customer
         );
 
         if (!mounted) return;
@@ -69,7 +68,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               email: _emailController.text.trim(),
               fullName: '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
               phone: _phoneController.text.trim(),
-              userType: 'customer',
+              userType: 'HOMEOWNER',
             ),
           ),
         );

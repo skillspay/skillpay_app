@@ -77,6 +77,14 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     try {
       await _authService.verifyEmailOTP(widget.email, _otp);
       
+      // Sync user to NestJS DB before proceeding to protected endpoints
+      await _authService.syncUserAfterVerification(
+        email: widget.email,
+        fullName: widget.fullName,
+        phone: widget.phone,
+        role: widget.userType,
+      );
+
       if (!mounted) return;
       setState(() => _isLoading = false);
       

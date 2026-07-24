@@ -63,6 +63,26 @@ class AuthService {
 
   // ─── Profile setup ───────────────────────────────────────────────────────
 
+  /// Syncs the Supabase user to the NestJS Postgres database.
+  /// Must be called after OTP verification and before any protected endpoints.
+  Future<void> syncUserAfterVerification({
+    required String email,
+    required String fullName,
+    required String phone,
+    required String role,
+  }) async {
+    try {
+      await _api.post('/auth/register', body: {
+        'email': email,
+        'fullName': fullName,
+        'phone': phone,
+        'role': role.toUpperCase(),
+      });
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
   /// Step 3 — Finish homeowner profile setup via NestJS.
   /// Called after OTP verification, creates the `homeowners` row.
   Future<void> finishProfileSetup({
@@ -124,9 +144,10 @@ class AuthService {
       final user = response.user;
       if (user != null) {
         try {
+          final fName = user.userMetadata?['full_name']?.toString() ?? '';
           await _api.post('/auth/register', body: {
             'email': user.email ?? email,
-            'fullName': user.userMetadata?['full_name']?.toString() ?? '',
+            'fullName': fName.isNotEmpty ? fName : 'SkillPay User',
             'phone': user.userMetadata?['phone']?.toString() ?? '',
             'role': 'HOMEOWNER',
           });
@@ -185,12 +206,15 @@ class AuthService {
     required String fullName,
     required String phone,
     String? dateOfBirth,
+    String? profilePhoto,
   }) async {
     try {
       await _api.patch('/homeowners/profile', body: {
         'fullName': fullName,
         'phone': phone,
-        if (dateOfBirth != null) 'dob': dateOfBirth,
+        if (dateOfBirth != null && dateOfBirth.isNotEmpty) 'dob': dateOfBirth,
+        if (profilePhoto != null && profilePhoto.isNotEmpty)
+          'profilePhoto': profilePhoto,
       });
     } on ApiException catch (e) {
       throw Exception(e.message);

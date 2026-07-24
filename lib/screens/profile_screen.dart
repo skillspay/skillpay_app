@@ -85,7 +85,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
 
           final data = snapshot.data;
-          // NestJS returns camelCase; handle both for safety
           final fullName = data?['fullName']?.toString() ??
               data?['full_name']?.toString() ?? 'User';
           final parts = fullName.split(' ');
@@ -98,6 +97,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               data?['phone_number']?.toString() ?? '';
           final profileImageUrl = data?['profilePhoto']?.toString() ??
               data?['profile_photo']?.toString();
+          final gender = data?['gender']?.toString() ?? '';
+          final dob = data?['dob'] != null
+              ? _formatDate(data!['dob'].toString())
+              : '';
           
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -162,7 +165,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildProfileField('Last Name', lastName),
                 _buildProfileField('Email', email),
                 _buildProfileField('Phone Number', phoneNumber),
-                _buildProfileField('Date of Birth', 'January 15, 1982'), // Hardcoded per design for now unless added to DB
+                if (gender.isNotEmpty) _buildProfileField('Gender', gender),
+                if (dob.isNotEmpty) _buildProfileField('Date of Birth', dob),
                 
                 const SizedBox(height: 40),
               ],
@@ -189,7 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: GoogleFonts.outfit(
               fontSize: 15,
               fontWeight: FontWeight.w400,
-              color: AppColors.textMedium, // Grey matching the mockup
+              color: AppColors.textMedium,
             ),
           ),
           Text(
@@ -197,11 +201,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: GoogleFonts.outfit(
               fontSize: 15,
               fontWeight: FontWeight.w500,
-              color: AppColors.textDark, // Black matching the mockup
+              color: AppColors.textDark,
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatDate(String raw) {
+    try {
+      final dt = DateTime.parse(raw);
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+    } catch (_) {
+      return raw;
+    }
   }
 }

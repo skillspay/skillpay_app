@@ -123,7 +123,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   },
                   child: _buildNotificationCard(
                     icon: n.icon,
-                    message: n.message,
+                    message: n.body,
                     timeText: n.formattedTime,
                     hasRedDot: !n.isRead,
                   ),
