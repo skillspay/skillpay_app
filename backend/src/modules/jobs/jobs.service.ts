@@ -13,9 +13,14 @@ const JOB_INCLUDE = {
   _count: { select: { applications: true } },
 };
 
+import { AiMatchService } from './ai-match.service';
+
 @Injectable()
 export class JobsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiMatchService: AiMatchService,
+  ) {}
 
   // ─── Homeowner's own jobs ─────────────────────────────────────────────────
 
@@ -122,7 +127,12 @@ export class JobsService {
       include: JOB_INCLUDE,
     });
 
-    return this._formatJob(job);
+    const formattedJob = this._formatJob(job);
+    
+    // Asynchronously trigger AI Match
+    this.aiMatchService.matchJobWithArtisans(job).catch(console.error);
+
+    return formattedJob;
   }
 
   // ─── Cancel ───────────────────────────────────────────────────────────────
