@@ -68,6 +68,27 @@ export class JobsController {
     return this.jobsService.create(user.id, body);
   }
 
+  // Flutter (customer): PATCH /jobs/:id
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update an existing job' })
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: {
+      categoryId?: string;
+      title?: string;
+      description?: string;
+      budget?: number;
+      address?: string;
+      latitude?: number;
+      longitude?: number;
+      preferredDate?: string;
+      images?: string[];
+    },
+  ) {
+    return this.jobsService.update(user.id, id, body);
+  }
+
   // Flutter (customer): PATCH /jobs/:id/cancel
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel a job' })

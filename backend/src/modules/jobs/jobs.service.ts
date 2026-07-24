@@ -135,6 +135,54 @@ export class JobsService {
     return formattedJob;
   }
 
+  // ─── Update ───────────────────────────────────────────────────────────────
+
+  async update(
+    userId: string,
+    jobId: string,
+    data: {
+      categoryId?: string;
+      title?: string;
+      description?: string;
+      budget?: number;
+      address?: string;
+      latitude?: number;
+      longitude?: number;
+      preferredDate?: string;
+      images?: string[];
+    },
+  ) {
+    const homeowner = await this.prisma.homeowner.findUnique({
+      where: { userId },
+    });
+    if (!homeowner) throw new NotFoundException('Homeowner profile not found');
+
+    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    if (!job) throw new NotFoundException(`Job ${jobId} not found`);
+    if (job.homeownerId !== homeowner.id)
+      throw new ForbiddenException('Not your job');
+
+    const updatedJob = await this.prisma.job.update({
+      where: { id: jobId },
+      data: {
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId || null }),
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.budget !== undefined && { budget: data.budget }),
+        ...(data.address !== undefined && { address: data.address }),
+        ...(data.latitude !== undefined && { latitude: data.latitude }),
+        ...(data.longitude !== undefined && { longitude: data.longitude }),
+        ...(data.preferredDate !== undefined && {
+          preferredDate: (data.preferredDate && !isNaN(Date.parse(data.preferredDate))) ? new Date(data.preferredDate) : null,
+        }),
+        ...(data.images !== undefined && { images: data.images }),
+      },
+      include: JOB_INCLUDE,
+    });
+
+    return this._formatJob(updatedJob);
+  }
+
   // ─── Cancel ───────────────────────────────────────────────────────────────
 
   async cancel(userId: string, jobId: string) {
