@@ -101,6 +101,23 @@ export class HomeownersService {
       });
     }
 
+    // Sync defaultAddress to Address table
+    if (data.defaultAddress) {
+      const addrCount = await this.prisma.address.count({ where: { userId } });
+      if (addrCount === 0) {
+        await this.prisma.address.create({
+          data: {
+            userId,
+            label: 'Home',
+            address: data.defaultAddress,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            isDefault: true,
+          }
+        });
+      }
+    }
+
     return homeowner;
   }
 
