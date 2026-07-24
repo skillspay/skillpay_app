@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'onboarding_screen.dart';
-import 'dashboard_screen.dart';
+import 'lock_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -32,10 +32,10 @@ class _SplashScreenState extends State<SplashScreen> {
       
       final session = data.session;
       
-      // If we got a session, go to Dashboard
+      // If we got a session, go to Dashboard (via LockScreen)
       if (session != null) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          MaterialPageRoute(builder: (_) => const LockScreen(isFromResume: false)),
         );
       } else {
         // Only redirect to Onboarding if we are sure there's no session

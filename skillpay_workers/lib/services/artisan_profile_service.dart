@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'api_client.dart';
 
@@ -26,19 +27,39 @@ class ArtisanProfileService {
     String? availabilityStatus,
     double? latitude,
     double? longitude,
+    String? profilePhoto,
   }) async {
     try {
       await _api.patch('/artisans/profile', body: {
-        if (fullName != null) 'fullName': fullName,
-        if (businessName != null) 'businessName': businessName,
-        if (bio != null) 'bio': bio,
-        if (experience != null) 'experience': experience,
-        if (yearsExperience != null) 'yearsExperience': yearsExperience,
-        if (hourlyRate != null) 'hourlyRate': hourlyRate,
-        if (availabilityStatus != null) 'availabilityStatus': availabilityStatus,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-      });
+        'fullName': fullName,
+        'businessName': businessName,
+        'bio': bio,
+        'experience': experience,
+        'yearsExperience': yearsExperience,
+        'hourlyRate': hourlyRate,
+        'availabilityStatus': availabilityStatus,
+        'latitude': latitude,
+        'longitude': longitude,
+        'profilePhoto': profilePhoto,
+      }..removeWhere((_, v) => v == null));
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  /// Upload a profile photo file to storage and save the URL to the artisan profile.
+  /// Returns the public URL of the uploaded photo.
+  Future<String> uploadProfilePhoto(File imageFile) async {
+    try {
+      final response = await _api.uploadFile(
+        '/storage/profile-image',
+        file: imageFile,
+        fieldName: 'file',
+      );
+      final url = (response as Map<String, dynamic>)['url'] as String;
+      // Persist the photo URL on the artisan profile
+      await _api.patch('/artisans/profile', body: {'profilePhoto': url});
+      return url;
     } on ApiException catch (e) {
       throw Exception(e.message);
     }
@@ -79,6 +100,37 @@ class ArtisanProfileService {
     } on ApiException catch (e) {
       debugPrint('Error fetching categories: ${e.message}');
       return [];
+    }
+  }
+
+  /// Upload a verification document file to storage.
+  /// Returns the public URL of the uploaded document.
+  Future<String> uploadVerificationDocument(File documentFile) async {
+    try {
+      final response = await _api.uploadFile(
+        '/storage/verification-document',
+        file: documentFile,
+        fieldName: 'file',
+      );
+      final url = (response as Map<String, dynamic>)['url'] as String;
+      return url;
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  /// Submit a verification document for admin review.
+  Future<void> submitVerificationDocument({
+    required String type,
+    required String fileUrl,
+  }) async {
+    try {
+      await _api.post('/artisans/verify', body: {
+        'type': type,
+        'fileUrl': fileUrl,
+      });
+    } on ApiException catch (e) {
+      throw Exception(e.message);
     }
   }
 }

@@ -183,6 +183,7 @@ model Artisan {
   businessName         String?            @map("business_name")
   fullName             String             @map("full_name")
   bio                  String?
+  coverLetter          String?            @map("cover_letter")
   experience           String?
   yearsExperience      Int                @default(0) @map("years_experience")
   hourlyRate           Decimal?           @db.Decimal(10, 2) @map("hourly_rate")
@@ -204,8 +205,25 @@ model Artisan {
   reviews               Review[]
   verificationDocuments VerificationDocument[]
   payments              Payment[]
+  posts                 ArtisanPost[]
 
   @@map("artisans")
+}
+
+// ─── Artisan Posts ────────────────────────────────────────────────────────────
+
+model ArtisanPost {
+  id          String   @id @default(uuid())
+  artisanId   String   @map("artisan_id")
+  title       String?
+  description String?
+  imageUrl    String?  @map("image_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  artisan     Artisan  @relation(fields: [artisanId], references: [id], onDelete: Cascade)
+
+  @@map("artisan_posts")
 }
 
 // ─── Categories ───────────────────────────────────────────────────────────────

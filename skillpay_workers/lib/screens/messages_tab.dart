@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'history_chat_screen.dart'; // We can reuse the chat screen we built earlier
+import 'history_chat_screen.dart';
+import '../services/messages_service.dart';
+import '../models/chat_model.dart';
 
 class MessagesTab extends StatefulWidget {
   const MessagesTab({super.key});
@@ -9,83 +11,62 @@ class MessagesTab extends StatefulWidget {
 }
 
 class _MessagesTabState extends State<MessagesTab> {
-  // Using a boolean to easily toggle empty state for testing
-  final bool _isEmpty = false; 
+  final _messagesService = MessagesService();
+  final _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _mockMessages = [
-    {
-      'name': 'James Walker',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': true,
-      'imageUrl': 'https://i.pravatar.cc/150?u=a04258114e29026702d',
-      'isRead': false,
-    },
-    {
-      'name': 'Bluecollar',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': true,
-      'imageUrl': 'https://i.pravatar.cc/150?u=2',
-      'isRead': false,
-    },
-    {
-      'name': 'Bluecollar',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': false,
-      'imageUrl': 'https://i.pravatar.cc/150?u=3',
-      'isRead': true,
-    },
-    {
-      'name': 'Bluecollar',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': false,
-      'imageUrl': 'https://i.pravatar.cc/150?u=4',
-      'isRead': true,
-    },
-    {
-      'name': 'Bluecollar',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': true,
-      'imageUrl': 'https://i.pravatar.cc/150?u=5',
-      'isRead': true,
-    },
-    {
-      'name': 'James Walker',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': false,
-      'imageUrl': 'https://i.pravatar.cc/150?u=a04258114e29026702d',
-      'isRead': true,
-    },
-    {
-      'name': 'Bluecollar',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': false,
-      'imageUrl': 'https://i.pravatar.cc/150?u=6',
-      'isRead': true,
-    },
-    {
-      'name': 'Bluecollar',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': true,
-      'imageUrl': 'https://i.pravatar.cc/150?u=7',
-      'isRead': true,
-    },
-    {
-      'name': 'Bluecollar',
-      'message': 'Hi, are you available for a pro...',
-      'time': '1m Ago',
-      'isActive': false,
-      'imageUrl': 'https://i.pravatar.cc/150?u=8',
-      'isRead': true,
-    },
-  ];
+  List<ChatModel> _conversations = [];
+  List<ChatModel> _filteredConversations = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchConversations();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchConversations() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final conversations = await _messagesService.fetchConversations();
+      if (mounted) {
+        setState(() {
+          _conversations = conversations;
+          _filteredConversations = conversations;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredConversations = _conversations.where((c) {
+        final nameMatch = c.homeownerName.toLowerCase().contains(query);
+        final messageMatch = c.lastMessage.toLowerCase().contains(query);
+        return nameMatch || messageMatch;
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,8 +100,9 @@ class _MessagesTabState extends State<MessagesTab> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey[200]!),
               ),
-              child: const TextField(
-                decoration: InputDecoration(
+              child: TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
                   icon: Icon(Icons.search, color: Colors.grey),
                   hintText: 'Search messages...',
                   hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
@@ -134,46 +116,75 @@ class _MessagesTabState extends State<MessagesTab> {
           
           // Content Area
           Expanded(
-            child: _isEmpty ? _buildEmptyState() : _buildMessagesList(),
+            child: _buildContent(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Text(
-        'No messages yet',
-        style: TextStyle(
-          color: Colors.grey[500],
-          fontSize: 16,
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Error loading messages', style: TextStyle(color: Colors.red[300])),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _fetchConversations,
+              child: const Text('Retry'),
+            ),
+          ],
         ),
+      );
+    }
+    if (_filteredConversations.isEmpty) {
+      return Center(
+        child: Text(
+          _searchController.text.isEmpty ? 'No messages yet' : 'No matching messages',
+          style: TextStyle(color: Colors.grey[500], fontSize: 16),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchConversations,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        itemCount: _filteredConversations.length,
+        separatorBuilder: (context, index) => Divider(color: Colors.grey[200], height: 1),
+        itemBuilder: (context, index) {
+          final conversation = _filteredConversations[index];
+          return _buildMessageTile(conversation);
+        },
       ),
     );
   }
 
-  Widget _buildMessagesList() {
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      itemCount: _mockMessages.length,
-      separatorBuilder: (context, index) => Divider(color: Colors.grey[200], height: 1),
-      itemBuilder: (context, index) {
-        final message = _mockMessages[index];
-        return _buildMessageTile(message);
-      },
-    );
-  }
-
-  Widget _buildMessageTile(Map<String, dynamic> message) {
+  Widget _buildMessageTile(ChatModel chat) {
+    final hasUnread = chat.unreadCount > 0;
+    
     return ListTile(
       onTap: () {
+        if (hasUnread) {
+          _messagesService.markConversationAsSeen(chat.id);
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => HistoryChatScreen(clientName: message['name']),
+            builder: (context) => HistoryChatScreen(
+              conversationId: chat.id,
+              clientName: chat.homeownerName,
+            ),
           ),
-        );
+        ).then((_) {
+          // Refresh list on return to update read status and last message
+          _fetchConversations();
+        });
       },
       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       leading: Stack(
@@ -184,13 +195,18 @@ class _MessagesTabState extends State<MessagesTab> {
             decoration: BoxDecoration(
               color: Colors.grey[200],
               shape: BoxShape.circle,
-              image: DecorationImage(
-                image: NetworkImage(message['imageUrl']),
-                fit: BoxFit.cover,
-              ),
+              image: chat.homeownerAvatarUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(chat.homeownerAvatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
+            child: chat.homeownerAvatarUrl == null
+                ? const Icon(Icons.person, color: Colors.grey)
+                : null,
           ),
-          if (message['isActive'])
+          if (hasUnread)
             Positioned(
               left: 0,
               top: 0,
@@ -207,24 +223,24 @@ class _MessagesTabState extends State<MessagesTab> {
         ],
       ),
       title: Text(
-        message['name'],
+        chat.homeownerName,
         style: TextStyle(
-          fontWeight: message['isRead'] ? FontWeight.normal : FontWeight.bold,
+          fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
           fontSize: 15,
         ),
       ),
       subtitle: Text(
-        message['message'],
+        chat.lastMessage,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: message['isRead'] ? Colors.grey[600] : Colors.black87,
-          fontWeight: message['isRead'] ? FontWeight.normal : FontWeight.w500,
+          color: hasUnread ? Colors.black87 : Colors.grey[600],
+          fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
           fontSize: 13,
         ),
       ),
       trailing: Text(
-        message['time'],
+        chat.timeText,
         style: TextStyle(
           color: Colors.grey[500],
           fontSize: 12,

@@ -7,8 +7,9 @@ import 'job_details_screen.dart';
 
 class HomeTab extends StatefulWidget {
   final bool isVerified;
+  final String? profilePhotoUrl;
 
-  const HomeTab({super.key, this.isVerified = false});
+  const HomeTab({super.key, this.isVerified = false, this.profilePhotoUrl});
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -88,9 +89,16 @@ class _HomeTabState extends State<HomeTab> {
                         decoration: BoxDecoration(
                           color: Colors.grey[200],
                           shape: BoxShape.circle,
+                          image: widget.profilePhotoUrl != null
+                              ? DecorationImage(
+                                  image: NetworkImage(widget.profilePhotoUrl!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
                         ),
-                        child:
-                            const Icon(Icons.person, color: Colors.grey),
+                        child: widget.profilePhotoUrl == null
+                            ? const Icon(Icons.person, color: Colors.grey)
+                            : null,
                       ),
                       const SizedBox(width: 12),
                       Column(

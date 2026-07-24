@@ -117,7 +117,14 @@ class ApiClient {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       try {
-        return jsonDecode(body);
+        final decoded = jsonDecode(body);
+        // Unwrap NestJS TransformInterceptor envelope if present
+        if (decoded is Map<String, dynamic> &&
+            decoded.containsKey('success') &&
+            decoded.containsKey('data')) {
+          return decoded['data'];
+        }
+        return decoded;
       } catch (_) {
         return body;
       }

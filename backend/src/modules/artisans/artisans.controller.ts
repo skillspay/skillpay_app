@@ -67,6 +67,7 @@ export class ArtisansController {
       businessName?: string;
       fullName?: string;
       bio?: string;
+      coverLetter?: string;
       experience?: string;
       yearsExperience?: number;
       hourlyRate?: number;

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/splash_screen.dart';
+import 'screens/lock_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,13 +20,61 @@ void main() async {
   runApp(const SkillPayApp());
 }
 
-class SkillPayApp extends StatelessWidget {
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+class SkillPayApp extends StatefulWidget {
   const SkillPayApp({super.key});
+
+  @override
+  State<SkillPayApp> createState() => _SkillPayAppState();
+}
+
+class _SkillPayAppState extends State<SkillPayApp> with WidgetsBindingObserver {
+  bool _isLocked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused) {
+      // App went to background
+    } else if (state == AppLifecycleState.resumed) {
+      // App came back to foreground
+      _checkLock();
+    }
+  }
+
+  void _checkLock() {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null && !_isLocked) {
+      _isLocked = true;
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => const LockScreen(isFromResume: true),
+        ),
+      ).then((_) {
+        _isLocked = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SkillPay Workers',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

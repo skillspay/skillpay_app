@@ -282,7 +282,12 @@ class HistoryJobDetailsScreen extends StatelessWidget {
                         // Navigate to chat
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const HistoryChatScreen(clientName: 'James Walker')),
+                          MaterialPageRoute(
+                            builder: (context) => const HistoryChatScreen(
+                              conversationId: '', // TODO: Pass real conversation ID
+                              clientName: 'James Walker'
+                            ),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(

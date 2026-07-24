@@ -1,69 +1,76 @@
 import 'package:flutter/material.dart';
 import 'history_job_details_screen.dart';
+import '../services/bookings_service.dart';
+import '../models/booking_model.dart';
 
-class HistoryTab extends StatelessWidget {
+class HistoryTab extends StatefulWidget {
   const HistoryTab({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Mock data for history
-    final List<Map<String, dynamic>> historyJobs = [
-      {
-        'id': 'JOB-36474849',
-        'person': 'Felix Matson',
-        'category': 'Plumbing',
-        'status': 'Pending',
-      },
-      {
-        'id': 'JOB-36474849',
-        'person': 'Mary Janet',
-        'category': 'Cleaning',
-        'status': 'Completed',
-      },
-      {
-        'id': 'JOB-36474849',
-        'person': 'Felix Matson',
-        'category': 'Plumbing',
-        'status': 'Completed',
-      },
-      {
-        'id': 'JOB-36474849',
-        'person': 'Felix Matson',
-        'category': 'Cleaning',
-        'status': 'Cancelled',
-      },
-      {
-        'id': 'JOB-36474849',
-        'person': 'Felix Matson',
-        'category': 'Plumbing',
-        'status': 'Completed',
-      },
-      {
-        'id': 'JOB-36474849',
-        'person': 'Felix Matson',
-        'category': 'Electrical',
-        'status': 'Completed',
-      },
-      {
-        'id': 'JOB-36474849',
-        'person': 'Felix Matson',
-        'category': 'Cleaning',
-        'status': 'Cancelled',
-      },
-      {
-        'id': 'JOB-36474849',
-        'person': 'Felix Matson',
-        'category': 'Plumbing',
-        'status': 'Pending',
-      },
-      {
-        'id': 'JOB-36474849',
-        'person': 'Mary Janet',
-        'category': 'Cleaning',
-        'status': 'Completed',
-      },
-    ];
+  State<HistoryTab> createState() => _HistoryTabState();
+}
 
+class _HistoryTabState extends State<HistoryTab> {
+  final _bookingsService = BookingsService();
+  final _searchController = TextEditingController();
+  
+  List<BookingModel> _bookings = [];
+  List<BookingModel> _filteredBookings = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHistory();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchHistory() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final bookings = await _bookingsService.fetchMyBookings();
+      if (mounted) {
+        setState(() {
+          _bookings = bookings;
+          _filteredBookings = bookings;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredBookings = _bookings.where((b) {
+        final titleMatch = (b.jobTitle ?? '').toLowerCase().contains(query);
+        final nameMatch = (b.homeownerName ?? '').toLowerCase().contains(query);
+        final idMatch = b.id.toLowerCase().contains(query);
+        return titleMatch || nameMatch || idMatch;
+      }).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return SafeArea(
       child: Column(
         children: [
@@ -90,12 +97,13 @@ class HistoryTab extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.grey[50], // Very light background
+                color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey[200]!),
               ),
-              child: const TextField(
-                decoration: InputDecoration(
+              child: TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
                   icon: Icon(Icons.search, color: Colors.grey),
                   hintText: 'Search Jobs..',
                   hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
@@ -109,35 +117,74 @@ class HistoryTab extends StatelessWidget {
           
           // List of History items
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-              itemCount: historyJobs.length,
-              separatorBuilder: (context, index) => Divider(color: Colors.grey[200], height: 1),
-              itemBuilder: (context, index) {
-                final job = historyJobs[index];
-                return _buildHistoryItem(context, job);
-              },
-            ),
+            child: _buildContent(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHistoryItem(BuildContext context, Map<String, dynamic> job) {
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Error loading history', style: TextStyle(color: Colors.red[300])),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _fetchHistory,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_filteredBookings.isEmpty) {
+      return Center(
+        child: Text(
+          _searchController.text.isEmpty ? 'No jobs found' : 'No matching jobs',
+          style: TextStyle(color: Colors.grey[500], fontSize: 16),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchHistory,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+        itemCount: _filteredBookings.length,
+        separatorBuilder: (context, index) => Divider(color: Colors.grey[200], height: 1),
+        itemBuilder: (context, index) {
+          final booking = _filteredBookings[index];
+          return _buildHistoryItem(context, booking);
+        },
+      ),
+    );
+  }
+
+  Widget _buildHistoryItem(BuildContext context, BookingModel booking) {
     Color statusColor;
     Color statusBgColor;
 
-    switch (job['status']) {
-      case 'Pending':
+    switch (booking.status.toUpperCase()) {
+      case 'PENDING':
+      case 'CONFIRMED':
         statusColor = Colors.orange;
         statusBgColor = Colors.orange.withOpacity(0.1);
         break;
-      case 'Completed':
+      case 'IN_PROGRESS':
+        statusColor = Colors.blue;
+        statusBgColor = Colors.blue.withOpacity(0.1);
+        break;
+      case 'COMPLETED':
         statusColor = Colors.green;
         statusBgColor = Colors.green.withOpacity(0.1);
         break;
-      case 'Cancelled':
+      case 'CANCELLED':
         statusColor = Colors.red;
         statusBgColor = Colors.red.withOpacity(0.1);
         break;
@@ -152,8 +199,8 @@ class HistoryTab extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) => HistoryJobDetailsScreen(
-              jobId: job['id'],
-              status: job['status'],
+              jobId: booking.id, // using booking ID or job ID? Usually booking ID for history details
+              status: booking.status,
               statusColor: statusColor,
             ),
           ),
@@ -185,20 +232,26 @@ class HistoryTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    job['id'],
+                    booking.jobTitle ?? 'Job ${booking.id.substring(0, 8)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(
-                        job['person'],
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
+                      Expanded(
+                        child: Text(
+                          booking.homeownerName ?? 'Client',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -212,10 +265,11 @@ class HistoryTab extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        job['category'],
+                        booking.amount != null ? '\$${booking.amount!.toStringAsFixed(0)}' : 'N/A',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -232,7 +286,7 @@ class HistoryTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                job['status'],
+                booking.status.toUpperCase(),
                 style: TextStyle(
                   color: statusColor,
                   fontSize: 11,

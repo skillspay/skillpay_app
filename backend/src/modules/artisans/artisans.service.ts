@@ -6,6 +6,7 @@ const ARTISAN_INCLUDE = {
   user: { select: { id: true, email: true, phone: true } },
   categories: { include: { category: true } },
   verificationDocuments: true,
+  posts: { orderBy: { createdAt: 'desc' } },
 };
 
 @Injectable()
@@ -48,6 +49,7 @@ export class ArtisansService {
       businessName?: string;
       fullName?: string;
       bio?: string;
+      coverLetter?: string;
       experience?: string;
       yearsExperience?: number;
       hourlyRate?: number;

@@ -72,9 +72,10 @@ class AuthService {
       if (user != null) {
         // Upsert NestJS user row — idempotent, safe on every login.
         try {
+          final fName = user.userMetadata?['full_name']?.toString() ?? '';
           await _api.post('/auth/register', body: {
             'email': user.email ?? email,
-            'fullName': user.userMetadata?['full_name']?.toString() ?? '',
+            'fullName': fName.isNotEmpty ? fName : 'SkillPay Worker',
             'phone': user.userMetadata?['phone']?.toString() ?? '',
             'role': 'ARTISAN',
           });
@@ -168,6 +169,39 @@ class AuthService {
         'phone': phone,
         'role': role.toUpperCase(),
       });
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  // ─── Worker Profile Setup ──────────────────────────────────────────────────
+
+  Future<void> updateWorkerProfile({
+    String? fullName,
+    String? bio,
+    double? hourlyRate,
+    double? latitude,
+    double? longitude,
+    String? profilePhoto,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        if (fullName != null) 'fullName': fullName,
+        if (bio != null) 'bio': bio,
+        if (hourlyRate != null) 'hourlyRate': hourlyRate,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (profilePhoto != null) 'profilePhoto': profilePhoto,
+      };
+      await _api.patch('/artisans/profile', body: body);
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  Future<void> addCategory(String categoryId) async {
+    try {
+      await _api.post('/artisans/categories', body: {'categoryId': categoryId});
     } on ApiException catch (e) {
       throw Exception(e.message);
     }
