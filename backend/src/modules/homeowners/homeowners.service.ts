@@ -172,10 +172,32 @@ export class HomeownersService {
   // ─── Addresses ────────────────────────────────────────────────────────────
 
   async getAddresses(userId: string) {
-    return this.prisma.address.findMany({
+    const addresses = await this.prisma.address.findMany({
       where: { userId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
+
+    if (addresses.length === 0) {
+      const homeowner = await this.prisma.homeowner.findUnique({
+        where: { userId },
+      });
+      if (homeowner && homeowner.defaultAddress) {
+        // Automatically sync to Address table
+        const newAddress = await this.prisma.address.create({
+          data: {
+            userId,
+            label: 'Home',
+            address: homeowner.defaultAddress,
+            latitude: homeowner.latitude,
+            longitude: homeowner.longitude,
+            isDefault: true,
+          }
+        });
+        return [newAddress];
+      }
+    }
+
+    return addresses;
   }
 
   async addAddress(

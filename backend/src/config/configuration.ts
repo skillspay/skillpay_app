@@ -44,4 +44,12 @@ export default () => ({
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
   },
+
+  mail: {
+    host: process.env.SMTP_HOST || 'smtp.resend.com',
+    port: parseInt(process.env.SMTP_PORT || '465', 10),
+    user: process.env.SMTP_USER || 'resend',
+    password: process.env.SMTP_PASSWORD,
+    from: process.env.SMTP_FROM || '"Skillpay" <hello@skillpay.com>',
+  },
 });

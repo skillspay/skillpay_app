@@ -13,12 +13,15 @@ import { HomeownersService } from './homeowners.service';
 import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/request-with-user.interface';
+import { Logger } from '@nestjs/common';
 
 @ApiTags('Homeowners')
 @ApiBearerAuth('supabase-jwt')
 @UseGuards(SupabaseAuthGuard)
 @Controller('homeowners')
 export class HomeownersController {
+  private readonly logger = new Logger(HomeownersController.name);
+
   constructor(private readonly homeownersService: HomeownersService) {}
 
   // Flutter: GET /homeowners/profile
@@ -70,6 +73,7 @@ export class HomeownersController {
   @Get('addresses')
   @ApiOperation({ summary: 'List saved addresses' })
   getAddresses(@CurrentUser() user: AuthenticatedUser) {
+    this.logger.log(`Fetching addresses for user ${user.id}`);
     return this.homeownersService.getAddresses(user.id);
   }
 

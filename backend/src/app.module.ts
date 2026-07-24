@@ -16,6 +16,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { WalletModule } from './modules/wallet/wallet.module';
+import { MailModule } from './modules/mail/mail.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { StorageModule } from './modules/storage/storage.module';
@@ -36,6 +37,7 @@ import { AdminModule } from './modules/admin/admin.module';
     ChatModule,
     PaymentsModule,
     WalletModule,
+    MailModule,
     NotificationsModule,
     ReviewsModule,
     StorageModule,

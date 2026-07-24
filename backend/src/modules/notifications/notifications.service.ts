@@ -1,13 +1,48 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
-export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+export class NotificationsService implements OnModuleInit {
+  private readonly logger = new Logger(NotificationsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly mailService: MailService,
+  ) {}
+
+  onModuleInit() {
+    const projectId = this.config.get<string>('firebase.projectId');
+    const clientEmail = this.config.get<string>('firebase.clientEmail');
+    let privateKey = this.config.get<string>('firebase.privateKey');
+
+    if (projectId && clientEmail && privateKey) {
+      if (getApps().length === 0) {
+        // Handle escaped newlines in the private key string from .env
+        privateKey = privateKey.replace(/\\n/g, '\n');
+        
+        initializeApp({
+          credential: cert({
+            projectId,
+            clientEmail,
+            privateKey,
+          }),
+        });
+        this.logger.log('Firebase Admin SDK initialized successfully.');
+      }
+    } else {
+      this.logger.warn('Firebase Admin SDK not initialized. Missing environment variables.');
+    }
+  }
 
   async createNotification(userId: string, title: string, body: string, type: NotificationType = 'GENERAL', metadata?: any) {
-    return this.prisma.notification.create({
+    // 1. Create DB Record
+    const notification = await this.prisma.notification.create({
       data: {
         userId,
         title,
@@ -16,6 +51,54 @@ export class NotificationsService {
         metadata,
       },
     });
+
+    // 2. Try to send FCM push if Firebase is initialized
+    if (getApps().length > 0) {
+      try {
+        const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, fcmToken: true }});
+        
+        // Push Notification
+        if (user?.fcmToken) {
+          await getMessaging().send({
+            token: user.fcmToken,
+            notification: {
+              title,
+              body,
+            },
+            data: {
+              type,
+              notificationId: notification.id,
+              ...(metadata ? { metadata: JSON.stringify(metadata) } : {}),
+            },
+          });
+          this.logger.log(`FCM notification sent to user ${userId}`);
+        }
+
+        // Email Alert for important notification types
+        if (user?.email && ['APPLICATION', 'BOOKING', 'PAYMENT', 'VERIFICATION'].includes(type)) {
+           // We fire and forget the email sending so it doesn't block the request
+           this.mailService.sendNotificationEmail(user.email, title, body).catch(e => {
+             this.logger.error(`Error sending email to ${user.email}`, e);
+           });
+        }
+      } catch (e) {
+        this.logger.error(`Failed to send alerts to user ${userId}:`, e);
+      }
+    } else {
+      // Fallback if Firebase not initialized: still try to send email
+      try {
+        const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true }});
+        if (user?.email && ['APPLICATION', 'BOOKING', 'PAYMENT', 'VERIFICATION'].includes(type)) {
+           this.mailService.sendNotificationEmail(user.email, title, body).catch(e => {
+             this.logger.error(`Error sending email to ${user.email}`, e);
+           });
+        }
+      } catch (e) {
+        this.logger.error(`Failed to send email to user ${userId}:`, e);
+      }
+    }
+
+    return notification;
   }
 
   async getForUser(userId: string) {

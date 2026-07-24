@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{title}}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f6f9fc;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    .header {
+      background-color: #000000;
+      padding: 24px;
+      text-align: center;
+    }
+    .header h1 {
+      color: #ffffff;
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -0.5px;
+    }
+    .content {
+      padding: 32px;
+      color: #333333;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    .content p {
+      margin: 0 0 16px;
+    }
+    .button-container {
+      text-align: center;
+      margin-top: 32px;
+    }
+    .button {
+      display: inline-block;
+      background-color: #1a1a1a;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 24px;
+      text-align: center;
+      color: #888888;
+      font-size: 14px;
+      border-top: 1px solid #eeeeee;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Skillpay</h1>
+    </div>
+    <div class="content">
+      <p><strong>{{title}}</strong></p>
+      <p>{{body}}</p>
+      
+      {{#if actionUrl}}
+      <div class="button-container">
+        <a href="{{actionUrl}}" class="button">View Details</a>
+      </div>
+      {{/if}}
+    </div>
+    <div class="footer">
+      <p>© 2026 Skillpay. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
