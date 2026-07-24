@@ -53,6 +53,7 @@ export class HomeownersController {
     @Body()
     body: {
       fullName?: string;
+      phone?: string;
       gender?: string;
       dob?: string;
       profilePhoto?: string;

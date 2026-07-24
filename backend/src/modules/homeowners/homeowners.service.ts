@@ -110,6 +110,7 @@ export class HomeownersService {
     userId: string,
     data: {
       fullName?: string;
+      phone?: string;
       gender?: string;
       dob?: string;
       profilePhoto?: string;
@@ -121,12 +122,21 @@ export class HomeownersService {
   ) {
     await this.getProfile(userId); // auto-creates if missing
 
-    const { preferredContact, dob, ...rest } = data;
+    // Extract fields that belong to the User table (not Homeowner)
+    const { preferredContact, dob, phone, ...homeownerRest } = data;
+
+    // Update phone on the user row if provided
+    if (phone) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { phone },
+      });
+    }
 
     return this.prisma.homeowner.update({
       where: { userId },
       data: {
-        ...rest,
+        ...homeownerRest,
         ...(dob ? { dob: new Date(dob) } : {}),
       },
       include: {
