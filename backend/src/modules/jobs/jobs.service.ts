@@ -113,14 +113,14 @@ export class JobsService {
     const job = await this.prisma.job.create({
       data: {
         homeownerId: homeowner.id,
-        categoryId: data.categoryId,
+        categoryId: data.categoryId || null,
         title: data.title,
         description: data.description,
         budget: data.budget,
         address: data.address,
         latitude: data.latitude,
         longitude: data.longitude,
-        preferredDate: data.preferredDate ? new Date(data.preferredDate) : null,
+        preferredDate: (data.preferredDate && !isNaN(Date.parse(data.preferredDate))) ? new Date(data.preferredDate) : null,
         images: data.images ?? [],
         status: 'PUBLISHED',
       },
