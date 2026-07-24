@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { VerificationDocumentType } from '@prisma/client';
+import { Prisma, VerificationDocumentType } from '@prisma/client';
 
-const ARTISAN_INCLUDE = {
+const ARTISAN_INCLUDE: Prisma.ArtisanInclude = {
   user: { select: { id: true, email: true, phone: true } },
   categories: { include: { category: true } },
   verificationDocuments: true,
