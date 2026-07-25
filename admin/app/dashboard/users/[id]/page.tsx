@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 
-export default function UserProfilePage({ params }: { params: { id: string } }) {
+export default function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { id } = use(params);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
@@ -17,14 +18,14 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
   const fetchUser = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.users.get(params.id);
+      const res = await api.users.get(id);
       setUser(res);
     } catch (err) {
       console.error('Failed to load user', err);
     } finally {
       setLoading(false);
     }
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     fetchUser();
@@ -33,7 +34,7 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
   const handleVerify = async () => {
     setVerifying(true);
     try {
-      await api.users.update(params.id, { isVerified: true });
+      await api.users.update(id, { isVerified: true });
       await fetchUser();
     } catch (err) {
       console.error('Failed to verify user', err);
