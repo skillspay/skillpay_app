@@ -60,7 +60,7 @@ export class JobsService {
     let jobs = await this.prisma.job.findMany({
       where: {
         status: (status as any) ?? 'PUBLISHED',
-        ...(categoryId ? { categoryId } : artisan?.categoryId ? { categoryId: artisan.categoryId } : {}),
+        ...(categoryId ? { categoryId } : {}),
       },
       include: JOB_INCLUDE,
       orderBy: { createdAt: 'desc' },

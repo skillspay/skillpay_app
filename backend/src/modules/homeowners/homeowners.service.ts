@@ -47,6 +47,7 @@ export class HomeownersService {
               email: true,
               phone: true,
               role: true,
+              isVerified: true,
               addresses: true,
             },
           },
