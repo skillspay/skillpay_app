@@ -23,8 +23,18 @@ export class NotificationsService implements OnModuleInit {
 
     if (projectId && clientEmail && privateKey) {
       if (getApps().length === 0) {
-        // Handle escaped newlines in the private key string from .env
-        privateKey = privateKey.replace(/\\n/g, '\n');
+        // Robustly parse the private key to handle Railway/Docker environment variables
+        // which often mangle newlines or strip them or turn them into spaces.
+        const keyBody = privateKey
+          .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+          .replace(/-----END PRIVATE KEY-----/g, '')
+          .replace(/\\n/g, '')
+          .replace(/"/g, '')
+          .replace(/\s+/g, ''); // remove all whitespace, spaces, actual newlines
+          
+        // Reconstruct the key with proper PEM formatting
+        // OpenSSL doesn't strictly need 64-char lines for the body, but it MUST have the headers separated by newlines
+        privateKey = `-----BEGIN PRIVATE KEY-----\n${keyBody}\n-----END PRIVATE KEY-----\n`;
         
         initializeApp({
           credential: cert({
