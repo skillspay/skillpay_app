@@ -4,6 +4,7 @@ import '../services/jobs_service.dart';
 import '../services/wallet_service.dart';
 import '../models/job_model.dart';
 import 'job_details_screen.dart';
+import 'document_verification_screen.dart';
 
 class HomeTab extends StatefulWidget {
   final bool isVerified;
@@ -107,22 +108,17 @@ class _HomeTabState extends State<HomeTab> {
                           Row(
                             children: [
                               Text(
-                                'Hi $firstName 👋',
+                                'Hi $firstName',
                                 style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold),
                               ),
-                              if (widget.isVerified) ...[
-                                const SizedBox(width: 4),
-                                Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                      color: Colors.green,
-                                      shape: BoxShape.circle),
-                                  child: const Icon(Icons.check,
-                                      color: Colors.white, size: 10),
-                                ),
-                              ],
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.verified,
+                                color: widget.isVerified ? Colors.blue : Colors.orange,
+                                size: 16,
+                              ),
                             ],
                           ),
                           const Text('Welcome back',
@@ -146,6 +142,74 @@ class _HomeTabState extends State<HomeTab> {
               ),
 
               const SizedBox(height: 24),
+              
+              if (!widget.isVerified) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.orange),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Action Required',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Please verify your account to start accepting jobs and sending proposals.',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const DocumentVerificationScreen(),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Verify Now',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               // Earnings card
               Container(
@@ -354,7 +418,7 @@ class _HomeTabState extends State<HomeTab> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const JobDetailsScreen()),
+                        builder: (_) => JobDetailsScreen(job: job)),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFFFC107),

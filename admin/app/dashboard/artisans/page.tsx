@@ -86,7 +86,13 @@ export default function ArtisanVerification() {
                   {verifications.map((v) => (
                     <TableRow key={v.id} className="hover:bg-gray-50/50">
                       <TableCell className="font-medium text-gray-900">
-                        {v.artisan?.fullName || 'N/A'}
+                        {v.artisan?.userId ? (
+                          <a href={`/dashboard/users/${v.artisan.userId}`} className="hover:underline hover:text-amber-600 transition-colors">
+                            {v.artisan?.fullName || 'N/A'}
+                          </a>
+                        ) : (
+                          v.artisan?.fullName || 'N/A'
+                        )}
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{v.artisan?.id}</div>
                       </TableCell>
                       <TableCell>

@@ -45,6 +45,10 @@ export class ApplicationsService {
       where: { userId },
     });
     if (!artisan) throw new NotFoundException('Artisan profile not found');
+    
+    if (artisan.verificationStatus !== 'VERIFIED') {
+      throw new ForbiddenException('Only verified artisans can submit proposals');
+    }
 
     const job = await this.prisma.job.findUnique({ where: { id: jobId } });
     if (!job) throw new NotFoundException(`Job ${jobId} not found`);

@@ -62,6 +62,10 @@ export const api = {
     suspend: (id: string) => request(`/users/${id}/suspend`, { method: 'PATCH' }),
     ban: (id: string) => request(`/users/${id}/ban`, { method: 'PATCH' }),
     activate: (id: string) => request(`/users/${id}/activate`, { method: 'PATCH' }),
+    update: (id: string, data: any) => request(`/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
     getStats: () => request('/users/stats'),
   },
   artisans: {

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function UsersControl() {
+  const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -108,13 +110,22 @@ export default function UsersControl() {
                   </TableHeader>
                   <TableBody>
                     {users.map((u) => (
-                      <TableRow key={u.id} className="hover:bg-gray-50/50">
+                      <TableRow 
+                        key={u.id} 
+                        className="hover:bg-gray-50/50 cursor-pointer"
+                        onClick={() => router.push(`/dashboard/users/${u.id}`)}
+                      >
                         <TableCell>
                           <div className="font-medium text-gray-900">{u.email}</div>
                           <div className="text-[10px] text-gray-400 font-mono mt-0.5">{u.id}</div>
                         </TableCell>
-                        <TableCell className="font-medium text-gray-700">
+                        <TableCell className="font-medium text-gray-700 flex items-center gap-2">
                           {u.role === 'HOMEOWNER' ? u.homeowner?.fullName : u.artisan?.fullName || 'N/A'}
+                          {u.isVerified && (
+                            <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="font-semibold">{u.role}</Badge>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { request } from '../../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 export default function HomeownersPage() {
+  const router = useRouter();
   const [homeowners, setHomeowners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -64,9 +66,18 @@ export default function HomeownersPage() {
                   </TableHeader>
                   <TableBody>
                     {homeowners.map((u) => (
-                      <TableRow key={u.id} className="hover:bg-gray-50/50">
-                        <TableCell className="font-semibold text-gray-900">
+                      <TableRow 
+                        key={u.id} 
+                        className="hover:bg-gray-50/50 cursor-pointer"
+                        onClick={() => router.push(`/dashboard/users/${u.id}`)}
+                      >
+                        <TableCell className="font-semibold text-gray-900 flex items-center gap-2">
                           {u.homeowner?.fullName || '—'}
+                          {u.isVerified && (
+                            <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
                         </TableCell>
                         <TableCell className="text-gray-700 font-medium">{u.email}</TableCell>
                         <TableCell className="text-gray-600">{u.phone || '—'}</TableCell>

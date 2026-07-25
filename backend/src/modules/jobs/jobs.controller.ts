@@ -32,13 +32,14 @@ export class JobsController {
   @Get()
   @ApiOperation({ summary: 'List all jobs with optional filters' })
   findAll(
+    @CurrentUser() user: AuthenticatedUser,
     @Query('status') status?: string,
     @Query('categoryId') categoryId?: string,
     @Query('limit') limit?: number,
     @Query('lat') lat?: number,
     @Query('lng') lng?: number,
   ) {
-    return this.jobsService.findAll({ status, categoryId, limit, lat, lng });
+    return this.jobsService.findAll(user.id, { status, categoryId, limit, lat, lng });
   }
 
   // Flutter (customer): GET /jobs/:id

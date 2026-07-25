@@ -41,26 +41,46 @@ export class JobsService {
 
   // ─── Public job listing (artisans browse) ─────────────────────────────────
 
-  async findAll(filters: {
-    status?: string;
-    categoryId?: string;
-    limit?: number;
-    lat?: number;
-    lng?: number;
-  }) {
+  async findAll(
+    userId: string,
+    filters: {
+      status?: string;
+      categoryId?: string;
+      limit?: number;
+      lat?: number;
+      lng?: number;
+    }
+  ) {
     const { status, categoryId, limit } = filters;
 
-    const jobs = await this.prisma.job.findMany({
+    const artisan = await this.prisma.artisan.findUnique({
+      where: { userId },
+    });
+
+    let jobs = await this.prisma.job.findMany({
       where: {
         status: (status as any) ?? 'PUBLISHED',
-        ...(categoryId ? { categoryId } : {}),
+        ...(categoryId ? { categoryId } : artisan?.categoryId ? { categoryId: artisan.categoryId } : {}),
       },
       include: JOB_INCLUDE,
       orderBy: { createdAt: 'desc' },
       take: limit ? Number(limit) : 50,
     });
 
-    return jobs.map(this._formatJob);
+    if (artisan && artisan.latitude && artisan.longitude) {
+      jobs = jobs.filter((job) => {
+        if (!job.latitude || !job.longitude) return true;
+        const distance = this.aiMatchService.calculateDistance(
+          artisan.latitude!,
+          artisan.longitude!,
+          job.latitude,
+          job.longitude
+        );
+        return distance <= 30; // 30km radius match
+      });
+    }
+
+    return jobs.map((job) => this._formatJob(job));
   }
 
   // ─── Single job ───────────────────────────────────────────────────────────
@@ -107,8 +127,13 @@ export class JobsService {
   ) {
     const homeowner = await this.prisma.homeowner.findUnique({
       where: { userId },
+      include: { user: true },
     });
     if (!homeowner) throw new NotFoundException('Homeowner profile not found');
+
+    if (!homeowner.user.isVerified) {
+      throw new ForbiddenException('Only verified homeowners can create jobs');
+    }
 
     const job = await this.prisma.job.create({
       data: {
@@ -120,7 +145,8 @@ export class JobsService {
         address: data.address,
         latitude: data.latitude,
         longitude: data.longitude,
-        preferredDate: (data.preferredDate && !isNaN(Date.parse(data.preferredDate))) ? new Date(data.preferredDate) : null,
+        preferredDate: null,
+        timeline: data.preferredDate ?? 'Flexible',
         images: data.images ?? [],
         status: 'PUBLISHED',
       },
@@ -172,9 +198,7 @@ export class JobsService {
         ...(data.address !== undefined && { address: data.address }),
         ...(data.latitude !== undefined && { latitude: data.latitude }),
         ...(data.longitude !== undefined && { longitude: data.longitude }),
-        ...(data.preferredDate !== undefined && {
-          preferredDate: (data.preferredDate && !isNaN(Date.parse(data.preferredDate))) ? new Date(data.preferredDate) : null,
-        }),
+        ...(data.preferredDate !== undefined && { timeline: data.preferredDate }),
         ...(data.images !== undefined && { images: data.images }),
       },
       include: JOB_INCLUDE,
@@ -209,6 +233,7 @@ export class JobsService {
     const { _count, ...rest } = job;
     return {
       ...rest,
+      preferredDate: job.timeline ?? job.preferredDate,
       applicationCount: _count?.applications ?? 0,
     };
   }

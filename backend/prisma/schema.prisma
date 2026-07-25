@@ -287,6 +287,7 @@ model Job {
   description   String
   budget        Decimal   @db.Decimal(12, 2)
   preferredDate DateTime? @map("preferred_date")
+  timeline      String?
   status        JobStatus @default(PENDING)
   latitude      Float?
   longitude     Float?

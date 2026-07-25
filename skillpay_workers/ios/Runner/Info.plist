@@ -4,6 +4,10 @@
 <dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>This app requires Face ID to secure your wallet and account details.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Skillpay Workers uses your location to connect you with nearby clients.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Skillpay Workers uses your location to connect you with nearby clients.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

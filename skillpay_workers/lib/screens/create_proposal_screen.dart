@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 
@@ -12,6 +14,8 @@ class _CreateProposalScreenState extends State<CreateProposalScreen> {
   final TextEditingController _coverLetterController = TextEditingController();
   bool _isWorkPhotoUploaded = false;
   bool _isFormValid = false;
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -31,6 +35,17 @@ class _CreateProposalScreenState extends State<CreateProposalScreen> {
     if (isValid != _isFormValid) {
       setState(() {
         _isFormValid = isValid;
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+        _isWorkPhotoUploaded = true;
+        _validateForm();
       });
     }
   }
@@ -58,76 +73,87 @@ class _CreateProposalScreenState extends State<CreateProposalScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Cover letter',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TextField(
-                  controller: _coverLetterController,
-                  maxLines: null,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                    hintText: 'Enter your cover letter',
-                    hintStyle: TextStyle(color: Colors.grey),
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              const Text(
-                'Upload work photo',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              
-              // Upload Area
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isWorkPhotoUploaded = true;
-                    _validateForm();
-                  });
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50], // light grey area
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.grey[300]!,
-                      style: BorderStyle.solid,
-                    ),
-                  ),
+              Expanded(
+                child: SingleChildScrollView(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        _isWorkPhotoUploaded ? Icons.check_circle : Icons.backup_outlined,
-                        color: _isWorkPhotoUploaded ? Colors.green : Colors.grey,
-                        size: 28,
+                      const Text(
+                        'Cover letter',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _isWorkPhotoUploaded ? 'Work photo uploaded' : 'Click to upload',
+                      Container(
+                        height: 120,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextField(
+                          controller: _coverLetterController,
+                          maxLines: null,
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(16),
+                            hintText: 'Enter your cover letter',
+                            hintStyle: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      
+                      const Text(
+                        'Upload work photo',
                         style: TextStyle(
-                          color: _isWorkPhotoUploaded ? Colors.green : Colors.grey[600],
                           fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      // Upload Area
+                      GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50], // light grey area
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: _selectedImage != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.file(_selectedImage!, fit: BoxFit.cover, height: 160, width: double.infinity),
+                                )
+                              : Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 32),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _isWorkPhotoUploaded ? Icons.check_circle : Icons.backup_outlined,
+                                        color: _isWorkPhotoUploaded ? Colors.green : Colors.grey,
+                                        size: 28,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        _isWorkPhotoUploaded ? 'Work photo uploaded' : 'Click to upload',
+                                        style: TextStyle(
+                                          color: _isWorkPhotoUploaded ? Colors.green : Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -135,7 +161,7 @@ class _CreateProposalScreenState extends State<CreateProposalScreen> {
                 ),
               ),
               
-              const Spacer(),
+              const SizedBox(height: 16),
               
               SizedBox(
                 width: double.infinity,

@@ -17,4 +17,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(Role)
   role?: Role;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  isVerified?: boolean;
 }

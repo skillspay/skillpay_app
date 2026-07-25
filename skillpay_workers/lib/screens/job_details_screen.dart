@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../models/job_model.dart';
 import 'submit_proposal_screen.dart';
 
 class JobDetailsScreen extends StatelessWidget {
-  const JobDetailsScreen({super.key});
+  final JobModel job;
+
+  const JobDetailsScreen({super.key, required this.job});
 
   @override
   Widget build(BuildContext context) {
+    final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+    final isHomeownerAvailable = job.homeownerName != null;
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -27,43 +34,41 @@ class JobDetailsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'House Plumbing Construction',
-                style: TextStyle(
+              Text(
+                job.title,
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 12),
-              const Row(
+              Row(
                 children: [
-                  Text(
+                  const Text(
                     'Budget: ',
                     style: TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.normal),
                   ),
                   Text(
-                    '\$350,000.00',
-                    style: TextStyle(color: Colors.green, fontSize: 13, fontWeight: FontWeight.bold),
+                    currencyFormatter.format(job.budget),
+                    style: const TextStyle(color: Colors.green, fontSize: 13, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  _buildTag('Engineering'),
-                  const SizedBox(width: 8),
-                  _buildTag('Plumbing'),
+                  _buildTag(job.categoryName),
                 ],
               ),
               const SizedBox(height: 16),
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.location_on_outlined, color: Colors.grey, size: 14),
-                  SizedBox(width: 4),
+                  const Icon(Icons.location_on_outlined, color: Colors.grey, size: 14),
+                  const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      '102 St Miren Avenu New York 1283484',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                      job.address.isNotEmpty ? job.address : 'Location not specified',
+                      style: const TextStyle(color: Colors.grey, fontSize: 13),
                     ),
                   ),
                 ],
@@ -81,24 +86,24 @@ class JobDetailsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Odio amet feugiat ut integer tincidunt sed. Fusce vulputate sed commodo, sed lorem.',
-                style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+              Text(
+                job.description.isNotEmpty ? job.description : 'No description provided.',
+                style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
               ),
               
               const SizedBox(height: 24),
               
               const Text(
-                'Job Timeline',
+                'Preferred Date',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '45 Weeks (140 days)',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+              Text(
+                job.preferredDate ?? 'Flexible',
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
               ),
               
               const SizedBox(height: 24),
@@ -111,39 +116,58 @@ class JobDetailsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'XYW-7042735',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+              Text(
+                job.id.length > 8 ? job.id.substring(0, 8).toUpperCase() : job.id.toUpperCase(),
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
               ),
               
               const SizedBox(height: 24),
               
               const Text(
-                'Priority:',
+                'Client Information:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (isHomeownerAvailable)
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: job.homeownerPhoto != null ? NetworkImage(job.homeownerPhoto!) : null,
+                      child: job.homeownerPhoto == null
+                          ? const Icon(Icons.person, color: Colors.grey)
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      job.homeownerName!,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                )
+              else
+                const Text(
+                  'Client information hidden',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              
+              const SizedBox(height: 24),
+              
+              const Text(
+                'Proposals:',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'High',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              const Text(
-                'Proposal:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '15 submitted',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+              Text(
+                '${job.applicationCount} submitted',
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
               ),
               
               const SizedBox(height: 48),
@@ -155,7 +179,9 @@ class JobDetailsScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SubmitProposalScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => SubmitProposalScreen(jobId: job.id),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -167,7 +193,7 @@ class JobDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   child: const Text(
-                    'Apply',
+                    'Submit Proposal',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -185,14 +211,18 @@ class JobDetailsScreen extends StatelessWidget {
 
   Widget _buildTag(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         text,
-        style: TextStyle(color: Colors.grey[800], fontSize: 12),
+        style: TextStyle(
+          color: Colors.grey[800],
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

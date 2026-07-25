@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_screen.dart';
-import 'lock_screen.dart';
+import 'login_screen.dart';
+import 'dashboard_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,23 +29,32 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     // Listen to auth state to correctly handle delayed session recovery from local storage
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       if (!mounted) return;
       
       final session = data.session;
       
-      // If we got a session, go to Dashboard (via LockScreen)
+      // If we got a session, go to Dashboard
       if (session != null) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LockScreen(isFromResume: false)),
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
         );
       } else {
         // Only redirect to Onboarding if we are sure there's no session
-        // INITIAL_SESSION event with null session means they are definitely logged out
         if (data.event == AuthChangeEvent.initialSession || data.event == AuthChangeEvent.signedOut) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-          );
+          // Check if it's the very first time opening the app
+          final prefs = await SharedPreferences.getInstance();
+          final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+          
+          if (hasSeenOnboarding) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            );
+          } else {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+            );
+          }
         }
       }
     });

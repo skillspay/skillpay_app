@@ -240,7 +240,7 @@ class _JobsTabState extends State<JobsTab> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const JobDetailsScreen()),
+                        builder: (_) => JobDetailsScreen(job: job)),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFFFC107),

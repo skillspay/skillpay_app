@@ -1,8 +1,42 @@
 import 'package:flutter/material.dart';
+import '../services/artisan_profile_service.dart';
 import 'edit_proposal_screen.dart';
 
-class SubmitProposalScreen extends StatelessWidget {
-  const SubmitProposalScreen({super.key});
+class SubmitProposalScreen extends StatefulWidget {
+  final String? jobId;
+  
+  const SubmitProposalScreen({super.key, this.jobId});
+
+  @override
+  State<SubmitProposalScreen> createState() => _SubmitProposalScreenState();
+}
+
+class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
+  final _profileService = ArtisanProfileService();
+  bool _isLoading = true;
+  Map<String, dynamic>? _profileData;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfileData();
+  }
+
+  Future<void> _fetchProfileData() async {
+    try {
+      final profile = await _profileService.fetchProfile();
+      if (mounted) {
+        setState(() {
+          _profileData = profile;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,193 +56,195 @@ class SubmitProposalScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: _isLoading 
+            ? const Center(child: CircularProgressIndicator(color: Colors.black))
+            : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    final photoUrl = _profileData?['profilePhoto']?.toString() ?? _profileData?['profile_photo']?.toString();
+    final name = _profileData?['fullName']?.toString() ?? _profileData?['full_name']?.toString() ?? 'Artisan Name';
+    final categories = (_profileData?['categories'] as List<dynamic>?) ?? [];
+    final experience = _profileData?['yearsExperience']?.toString() ?? _profileData?['years_experience']?.toString() ?? '0';
+    final hourlyRate = _profileData?['hourlyRate']?.toString() ?? _profileData?['hourly_rate']?.toString() ?? '0';
+    final bio = _profileData?['bio']?.toString() ?? 'No cover letter or bio provided.';
+    final completedJobs = _profileData?['completedJobs']?.toString() ?? '0';
+    final rating = _profileData?['rating']?.toString() ?? '0.0';
+    final isVerified = _profileData?['verificationStatus'] == 'VERIFIED' || _profileData?['verification_status'] == 'VERIFIED';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Worker Info
+          Row(
             children: [
-              // Client Info
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      shape: BoxShape.circle,
-                      image: const DecorationImage(
-                        image: NetworkImage('https://i.pravatar.cc/150?u=a04258114e29026702d'), // Mock image
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  shape: BoxShape.circle,
+                  image: photoUrl != null 
+                    ? DecorationImage(
+                        image: NetworkImage(photoUrl),
                         fit: BoxFit.cover,
-                      ),
-                    ),
-                    // Green active dot
-                    alignment: Alignment.topLeft,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                      )
+                    : null,
+                ),
+                alignment: Alignment.topLeft,
+                child: photoUrl == null ? const Center(child: Icon(Icons.person, color: Colors.grey)) : null,
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      const Text(
-                        'James Walters P',
-                        style: TextStyle(
+                      Text(
+                        name,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Text(
-                        'CA, California',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _buildTag('Engineering'),
-                          const SizedBox(width: 8),
-                          _buildTag('Plumbing'),
-                        ],
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.verified,
+                        color: isVerified ? Colors.blue : Colors.orange,
+                        size: 16,
                       ),
                     ],
                   ),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              const Divider(height: 1, color: Color(0xFFEEEEEE)),
-              const SizedBox(height: 24),
-              
-              // Specs
-              _buildSpecRow('Experience', '8 years +'),
-              const SizedBox(height: 12),
-              _buildSpecRow('Based in', 'California CA'),
-              const SizedBox(height: 12),
-              _buildSpecRow('Work preference', 'Short & Long term'),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Starting rate', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                  const Text('\$100', style: TextStyle(color: Colors.green, fontSize: 14, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Cover Letter
-              const Text(
-                'Cover Letter',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[200]!),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'I am a professional and technical plumbing engineer with over 10yrs experience in...it. Quisque donec in accumsan enim vel vitae lectus odio. Posuere vitae in ornare ullamcorper ut est enim. Sed porttitor auctor quis sed. Pulvinar arcu urna libero viverra. Commodo tortor ac sed massa et aliquet adipiscing. See more...',
-                  style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Images
-              const Text(
-                'Images',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildMockWorkImage(),
-                  const SizedBox(width: 12),
-                  _buildMockWorkImage(),
-                  const SizedBox(width: 12),
-                  _buildMockWorkImage(),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Rating / Jobs
-              Row(
-                children: [
-                  const Icon(Icons.star, color: Color(0xFFFFC107), size: 16),
-                  const SizedBox(width: 4),
-                  const Text('4.7 Rating', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  const SizedBox(width: 16),
-                  Icon(Icons.check_circle_outline, color: Colors.grey[400], size: 16),
-                  const SizedBox(width: 4),
-                  const Text('46 completed jobs', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
-              ),
-              
-              const SizedBox(height: 48),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const EditProposalScreen()),
+                  const Text(
+                    'Your Profile',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (categories.isNotEmpty)
+                    Row(
+                      children: categories.take(2).map((cat) {
+                        final catName = cat['category']?['name'] ?? 'Category';
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: _buildTag(catName.toString()),
                         );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFFFC107),
-                        side: const BorderSide(color: Color(0xFFFFC107)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Edit proposal'),
+                      }).toList(),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Normally this would submit, but for now we follow the flow
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFC107),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Submit'),
-                    ),
-                  ),
                 ],
               ),
-              const SizedBox(height: 24),
             ],
           ),
-        ),
+          
+          const SizedBox(height: 24),
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          const SizedBox(height: 24),
+          
+          // Specs
+          _buildSpecRow('Experience', '$experience years +'),
+          const SizedBox(height: 12),
+          _buildSpecRow('Starting rate', '\$$hourlyRate / hr', valueColor: Colors.green),
+          
+          const SizedBox(height: 24),
+          
+          // Cover Letter
+          const Text(
+            'Cover Letter / Bio',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[200]!),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              bio,
+              style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Rating / Jobs
+          Row(
+            children: [
+              const Icon(Icons.star, color: Color(0xFFFFC107), size: 16),
+              const SizedBox(width: 4),
+              Text('$rating Rating', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(width: 16),
+              Icon(Icons.check_circle_outline, color: Colors.grey[400], size: 16),
+              const SizedBox(width: 4),
+              Text('$completedJobs completed jobs', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            ],
+          ),
+          
+          const SizedBox(height: 48),
+          
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const EditProposalScreen()),
+                    ).then((_) => _fetchProfileData());
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFFFC107),
+                    side: const BorderSide(color: Color(0xFFFFC107)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Edit proposal'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    final isVerified = _profileData?['verificationStatus'] == 'VERIFIED' || _profileData?['verification_status'] == 'VERIFIED';
+                    if (!isVerified) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Only verified artisans can submit proposals. Please complete verification.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                    // Logic to actually submit proposal to backend using widget.jobId
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFC107),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Submit'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
@@ -227,28 +263,13 @@ class SubmitProposalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSpecRow(String label, String value) {
+  Widget _buildSpecRow(String label, String value, {Color valueColor = Colors.black}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-        Text(value, style: const TextStyle(color: Colors.black, fontSize: 14)),
+        Text(value, style: TextStyle(color: valueColor, fontSize: 14, fontWeight: valueColor == Colors.black ? FontWeight.normal : FontWeight.bold)),
       ],
-    );
-  }
-
-  Widget _buildMockWorkImage() {
-    return Container(
-      width: 80,
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(8),
-        image: const DecorationImage(
-           image: NetworkImage('https://images.unsplash.com/photo-1581092160562-40aa08e78837?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&q=80'), // Mock plumbing work image
-           fit: BoxFit.cover,
-        ),
-      ),
     );
   }
 }

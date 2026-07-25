@@ -4,7 +4,8 @@ import 'jobs_tab.dart';
 import 'history_tab.dart';
 import 'messages_tab.dart';
 import 'settings_tab.dart';
-import 'package:skillpay/screens/worker_onboarding_screen.dart';
+import 'package:skillpay_workers/screens/worker_onboarding_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/artisan_profile_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -69,10 +70,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ];
         });
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (_needsProfileSetup && !_hasShownProfileSetup && mounted) {
             _hasShownProfileSetup = true;
-            _showProfileSetupModal();
+            
+            final prefs = await SharedPreferences.getInstance();
+            final hasSeenWorkerOnboarding = prefs.getBool('has_seen_worker_onboarding') ?? false;
+            
+            if (!hasSeenWorkerOnboarding && mounted) {
+              await prefs.setBool('has_seen_worker_onboarding', true);
+              _showProfileSetupModal();
+            }
           }
         });
       }
@@ -82,11 +90,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showProfileSetupModal() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const WorkerOnboardingScreen(),
+        builder: (_) => WorkerOnboardingScreen(),
       ),
     ).then((_) {
       // Re-fetch profile logic here if necessary, or just rely on state
-      _fetchProfile();
+      _checkProfileStatus();
     });
   }
 
@@ -98,63 +106,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.black))
           : _tabs[_currentIndex],
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.only(left: 20, right: 20, bottom: 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            selectedItemColor: Colors.black,
-            unselectedItemColor: Colors.grey,
-            showUnselectedLabels: true,
-            selectedLabelStyle:
-                const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-            unselectedLabelStyle:
-                const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
-            elevation: 0,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.work_outline),
-                activeIcon: Icon(Icons.work),
-                label: 'Jobs',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.history_outlined),
-                activeIcon: Icon(Icons.history),
-                label: 'History',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.mail_outline),
-                activeIcon: Icon(Icons.mail),
-                label: 'Messages',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                activeIcon: Icon(Icons.settings),
-                label: 'Settings',
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
+              _buildNavItem(1, Icons.work_outline, Icons.work, 'Jobs'),
+              _buildNavItem(2, Icons.history_outlined, Icons.history, 'History'),
+              _buildNavItem(3, Icons.mail_outline, Icons.mail, 'Messages'),
+              _buildNavItem(4, Icons.settings_outlined, Icons.settings, 'Settings'),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
+    final isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isSelected ? activeIcon : icon, color: isSelected ? Colors.black : Colors.grey),
+          const SizedBox(height: 4),
+          Text(
+            label, 
+            style: TextStyle(
+              color: isSelected ? Colors.black : Colors.grey, 
+              fontSize: 11, 
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal
+            ),
+          ),
+        ],
       ),
     );
   }
