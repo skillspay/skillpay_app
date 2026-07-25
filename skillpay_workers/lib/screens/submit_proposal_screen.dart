@@ -199,7 +199,7 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const EditProposalScreen()),
+                      MaterialPageRoute(builder: (context) => EditProposalScreen(profileData: _profileData)),
                     ).then((_) => _fetchProfileData());
                   },
                   style: OutlinedButton.styleFrom(

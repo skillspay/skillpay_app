@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'history_chat_screen.dart';
 import 'update_job_screen.dart';
 
+import '../models/booking_model.dart';
+
 class HistoryJobDetailsScreen extends StatelessWidget {
-  final String jobId;
-  final String status;
+  final BookingModel booking;
   final Color statusColor;
 
   const HistoryJobDetailsScreen({
     super.key,
-    required this.jobId,
-    required this.status,
+    required this.booking,
     required this.statusColor,
   });
 
@@ -175,37 +175,44 @@ class HistoryJobDetailsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Status
+              // Client Header Info
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: booking.homeownerPhoto != null 
+                        ? NetworkImage(booking.homeownerPhoto!) 
+                        : null,
+                    child: booking.homeownerPhoto == null
+                        ? const Icon(Icons.person, color: Colors.grey, size: 24)
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          jobId,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          booking.homeownerName ?? 'Client',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Text(
-                              'Client: John Dalton',
-                              style: TextStyle(color: Colors.grey, fontSize: 13),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Jan 12, 2025',
-                              style: TextStyle(color: Colors.grey, fontSize: 13),
+                            const Icon(Icons.location_on_outlined, color: Colors.grey, size: 14),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                booking.jobAddress ?? 'Location not specified',
+                                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              status,
+                              booking.status,
                               style: TextStyle(color: statusColor, fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -221,11 +228,11 @@ class HistoryJobDetailsScreen extends StatelessWidget {
               // Financials Row
               Row(
                 children: [
-                  Expanded(child: _buildFinancialBox('Total Cost', '\$200k')),
+                  Expanded(child: _buildFinancialBox('Total Cost', '\$${booking.amount?.toStringAsFixed(2) ?? '0.00'}')),
                   const SizedBox(width: 16),
                   Expanded(child: _buildFinancialBox('Prepayment', '\$0.00')),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildFinancialBox('Balance', '\$0.00')),
+                  Expanded(child: _buildFinancialBox('Balance', '\$${booking.amount?.toStringAsFixed(2) ?? '0.00'}')),
                 ],
               ),
               
@@ -259,17 +266,15 @@ class HistoryJobDetailsScreen extends StatelessWidget {
               const SizedBox(height: 16),
               
               // Details List
-              _buildDetailItem('Service Type', 'Plumbing'),
+              _buildDetailItem('Service Type', booking.jobCategoryName ?? 'Unknown'),
               const SizedBox(height: 16),
-              _buildDetailItem('Job Timeline', '5 Days'),
+              _buildDetailItem('Job Timeline', booking.jobTimeline ?? 'Not specified'),
               const SizedBox(height: 16),
-              _buildDetailItem('Urgency Type', 'High-priority'),
+              _buildDetailItem('Preferred Date', booking.jobPreferredDate ?? 'Flexible'),
               const SizedBox(height: 16),
-              _buildDetailItem('Location', '13, Festus Street Ojo Lagos'),
+              _buildDetailItem('Location', booking.jobAddress ?? 'Not specified'),
               const SizedBox(height: 16),
-              _buildDetailItem('File Upload', 'None'),
-              const SizedBox(height: 16),
-              _buildDetailItem('Additional Details', 'None'),
+              _buildDetailItem('Additional Details', booking.jobDescription ?? 'None'),
               
               const SizedBox(height: 32),
               

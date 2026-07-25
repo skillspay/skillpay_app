@@ -7,6 +7,7 @@ class JobModel {
   final String address;
   final double budget;
   final String? preferredDate;
+  final String? timeline;
   final String status;
   final int applicationCount;
   final String? categoryId;
@@ -28,6 +29,7 @@ class JobModel {
     required this.address,
     required this.budget,
     this.preferredDate,
+    this.timeline,
     required this.status,
     required this.applicationCount,
     this.categoryId,
@@ -53,6 +55,7 @@ class JobModel {
       address: map['address']?.toString() ?? '',
       budget: double.tryParse(map['budget']?.toString() ?? '0') ?? 0.0,
       preferredDate: map['preferredDate']?.toString() ?? map['preferred_date']?.toString(),
+      timeline: map['timeline']?.toString(),
       status: map['status']?.toString() ?? 'PENDING',
       applicationCount: (map['applicationCount'] as int?) ?? (map['application_count'] as int?) ?? 0,
       categoryId: categoryObj?['id']?.toString() ?? map['categoryId']?.toString(),

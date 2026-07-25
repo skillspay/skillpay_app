@@ -12,6 +12,10 @@ class BookingModel {
   // Embedded relations
   final String? jobTitle;
   final String? jobAddress;
+  final String? jobDescription;
+  final String? jobTimeline;
+  final String? jobPreferredDate;
+  final String? jobCategoryName;
   final double? amount; // from application price
   final String? homeownerName;
   final String? homeownerPhoto;
@@ -27,6 +31,10 @@ class BookingModel {
     required this.createdAt,
     this.jobTitle,
     this.jobAddress,
+    this.jobDescription,
+    this.jobTimeline,
+    this.jobPreferredDate,
+    this.jobCategoryName,
     this.amount,
     this.homeownerName,
     this.homeownerPhoto,
@@ -54,6 +62,10 @@ class BookingModel {
           : DateTime.now(),
       jobTitle: jobObj?['title']?.toString(),
       jobAddress: jobObj?['address']?.toString(),
+      jobDescription: jobObj?['description']?.toString(),
+      jobTimeline: jobObj?['timeline']?.toString(),
+      jobPreferredDate: jobObj?['preferredDate']?.toString(),
+      jobCategoryName: jobObj?['category']?['name']?.toString(),
       amount: double.tryParse(applicationObj?['price']?.toString() ?? ''),
       homeownerName: homeownerObj?['fullName']?.toString() ?? homeownerObj?['full_name']?.toString(),
       homeownerPhoto: homeownerObj?['profilePhoto']?.toString(),

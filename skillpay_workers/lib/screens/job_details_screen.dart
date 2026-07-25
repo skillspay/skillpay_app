@@ -109,6 +109,21 @@ class JobDetailsScreen extends StatelessWidget {
               const SizedBox(height: 24),
               
               const Text(
+                'Job Timeline',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                job.timeline ?? 'Not specified',
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              const Text(
                 'Job ID:',
                 style: TextStyle(
                   fontSize: 16,

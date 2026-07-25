@@ -199,8 +199,7 @@ class _HistoryTabState extends State<HistoryTab> {
           context,
           MaterialPageRoute(
             builder: (context) => HistoryJobDetailsScreen(
-              jobId: booking.id, // using booking ID or job ID? Usually booking ID for history details
-              status: booking.status,
+              booking: booking,
               statusColor: statusColor,
             ),
           ),

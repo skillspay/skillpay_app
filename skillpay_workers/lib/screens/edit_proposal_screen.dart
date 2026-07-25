@@ -2,16 +2,24 @@ import 'package:flutter/material.dart';
 import 'proposal_submitted_modal.dart';
 
 class EditProposalScreen extends StatefulWidget {
-  const EditProposalScreen({super.key});
+  final Map<String, dynamic>? profileData;
+
+  const EditProposalScreen({super.key, this.profileData});
 
   @override
   State<EditProposalScreen> createState() => _EditProposalScreenState();
 }
 
 class _EditProposalScreenState extends State<EditProposalScreen> {
-  final TextEditingController _coverLetterController = TextEditingController(
-    text: 'I am a professional and technical plumbing engineer with over 10yrs experience in...it. Quisque donec in accumsan enim vel vitae lectus odio. Posuere vitae in ornare ullamcorper ut est enim.'
-  );
+  late TextEditingController _coverLetterController;
+
+  @override
+  void initState() {
+    super.initState();
+    final bio = widget.profileData?['bio']?.toString() ?? 
+        'I am a professional and technical plumbing engineer...';
+    _coverLetterController = TextEditingController(text: bio);
+  }
 
   void _showSuccessModal() {
     showDialog(
@@ -38,6 +46,13 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profileData = widget.profileData;
+    final photoUrl = profileData?['profilePhoto']?.toString() ?? profileData?['profile_photo']?.toString();
+    final name = profileData?['fullName']?.toString() ?? profileData?['full_name']?.toString() ?? 'Artisan Name';
+    final categories = (profileData?['categories'] as List<dynamic>?) ?? [];
+    final experience = profileData?['yearsExperience']?.toString() ?? profileData?['years_experience']?.toString() ?? '0';
+    final hourlyRate = profileData?['hourlyRate']?.toString() ?? profileData?['hourly_rate']?.toString() ?? '0';
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -68,48 +83,45 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
                       shape: BoxShape.circle,
-                      image: const DecorationImage(
-                        image: NetworkImage('https://i.pravatar.cc/150?u=a04258114e29026702d'),
-                        fit: BoxFit.cover,
-                      ),
+                      image: photoUrl != null
+                          ? DecorationImage(
+                              image: NetworkImage(photoUrl),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
                     alignment: Alignment.topLeft,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
+                    child: photoUrl == null ? const Center(child: Icon(Icons.person, color: Colors.grey)) : null,
                   ),
                   const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'James Walters P',
-                        style: TextStyle(
+                      Text(
+                        name,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Text(
-                        'CA, California',
+                        'Your Profile',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _buildTag('Engineering'),
-                          const SizedBox(width: 8),
-                          _buildTag('Plumbing'),
-                        ],
-                      ),
+                      if (categories.isNotEmpty)
+                        Row(
+                          children: categories.take(2).map((cat) {
+                            final catName = cat['category']?['name'] ?? 'Category';
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: _buildTag(catName.toString()),
+                            );
+                          }).toList(),
+                        ),
                     ],
                   ),
                 ],
@@ -120,9 +132,9 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
               const SizedBox(height: 24),
               
               // Specs
-              _buildSpecRow('Experience', '8 years +'),
+              _buildSpecRow('Experience', '$experience years +'),
               const SizedBox(height: 12),
-              _buildSpecRow('Based in', 'California CA'),
+              _buildSpecRow('Based in', 'Location not specified'),
               const SizedBox(height: 12),
               _buildSpecRow('Work preference', 'Short & Long term'),
               const SizedBox(height: 12),
@@ -130,7 +142,7 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Starting rate', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                  const Text('\$100', style: TextStyle(color: Colors.green, fontSize: 14, fontWeight: FontWeight.bold)),
+                  Text('\$$hourlyRate / hr', style: const TextStyle(color: Colors.green, fontSize: 14, fontWeight: FontWeight.bold)),
                 ],
               ),
               
