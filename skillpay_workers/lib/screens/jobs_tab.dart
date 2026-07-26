@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/jobs_service.dart';
 import '../models/job_model.dart';
 import 'job_details_screen.dart';
+import 'submit_proposal_screen.dart';
 
 class JobsTab extends StatefulWidget {
   const JobsTab({super.key});
@@ -254,7 +255,14 @@ class _JobsTabState extends State<JobsTab> {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SubmitProposalScreen(jobId: job.id),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFC107),
                     foregroundColor: Colors.black,

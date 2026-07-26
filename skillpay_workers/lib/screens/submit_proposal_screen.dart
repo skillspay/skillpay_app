@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/artisan_profile_service.dart';
+import '../services/applications_service.dart';
 import 'edit_proposal_screen.dart';
+import 'proposal_submitted_modal.dart';
 
 class SubmitProposalScreen extends StatefulWidget {
   final String? jobId;
@@ -14,6 +16,7 @@ class SubmitProposalScreen extends StatefulWidget {
 class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
   final _profileService = ArtisanProfileService();
   bool _isLoading = true;
+  bool _isSubmitting = false;
   Map<String, dynamic>? _profileData;
 
   @override
@@ -36,6 +39,16 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showSuccessModal() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (BuildContext context) {
+        return const ProposalSubmittedModal();
+      },
+    );
   }
 
   @override
@@ -216,7 +229,14 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: _isSubmitting ? null : () async {
+                    if (widget.jobId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Error: No job ID provided.'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+                    
                     final isVerified = _profileData?['verificationStatus'] == 'VERIFIED' || _profileData?['verification_status'] == 'VERIFIED';
                     if (!isVerified) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -227,7 +247,34 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
                       );
                       return;
                     }
-                    // Logic to actually submit proposal to backend using widget.jobId
+                    
+                    setState(() => _isSubmitting = true);
+                    try {
+                      final hourlyRate = double.tryParse(_profileData?['hourlyRate']?.toString() ?? _profileData?['hourly_rate']?.toString() ?? '0') ?? 0.0;
+                      final bio = _profileData?['bio']?.toString() ?? 'No cover letter provided.';
+                      
+                      // Using the applications service
+                      final appService = ApplicationsService();
+                      await appService.submitApplication(
+                        jobId: widget.jobId!,
+                        price: hourlyRate,
+                        proposal: bio,
+                      );
+                      
+                      if (mounted) {
+                        _showSuccessModal();
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to submit proposal: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() => _isSubmitting = false);
+                      }
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFC107),
@@ -238,7 +285,9 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Submit'),
+                  child: _isSubmitting 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                      : const Text('Submit'),
                 ),
               ),
             ],

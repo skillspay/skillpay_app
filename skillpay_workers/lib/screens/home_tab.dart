@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/jobs_service.dart';
 import '../services/wallet_service.dart';
+import '../services/artisan_profile_service.dart';
 import '../models/job_model.dart';
 import 'job_details_screen.dart';
+import 'submit_proposal_screen.dart';
 import 'document_verification_screen.dart';
 
 class HomeTab extends StatefulWidget {
@@ -69,79 +72,101 @@ class _HomeTabState extends State<HomeTab> {
         user?.userMetadata?['full_name']?.toString() ?? 'Worker';
     final firstName = fullName.split(' ').first;
 
-    return SafeArea(
-      child: RefreshIndicator(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+      backgroundColor: Colors.white,
+      body: RefreshIndicator(
         onRefresh: _loadData,
-        child: SingleChildScrollView(
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          shape: BoxShape.circle,
-                          image: widget.profilePhotoUrl != null
-                              ? DecorationImage(
-                                  image: NetworkImage(widget.profilePhotoUrl!),
-                                  fit: BoxFit.cover,
-                                )
+          slivers: [
+            SliverToBoxAdapter(
+              child: Container(
+                color: Colors.black,
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 20,
+                  left: 24,
+                  right: 24,
+                  bottom: 32,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[800],
+                            shape: BoxShape.circle,
+                            image: widget.profilePhotoUrl != null
+                                ? DecorationImage(
+                                    image: NetworkImage(widget.profilePhotoUrl!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: widget.profilePhotoUrl == null
+                              ? const Icon(Icons.person, color: Colors.white)
                               : null,
                         ),
-                        child: widget.profilePhotoUrl == null
-                            ? const Icon(Icons.person, color: Colors.grey)
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Hi $firstName',
-                                style: const TextStyle(
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'Hi $firstName,',
+                                  style: const TextStyle(
                                     fontSize: 18,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.verified,
-                                color: widget.isVerified ? Colors.blue : Colors.orange,
-                                size: 16,
-                              ),
-                            ],
-                          ),
-                          const Text('Welcome back',
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.verified,
+                                  color: widget.isVerified ? Colors.blue : Colors.orange,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
+                            const Text(
+                              'What do you want to do today?',
                               style: TextStyle(
-                                  fontSize: 14, color: Colors.grey)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey[200]!),
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.notifications_none,
-                        color: Colors.black),
-                  ),
-                ],
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.notifications_none,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-
-              const SizedBox(height: 24),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               
               if (!widget.isVerified) ...[
                 Container(
@@ -312,9 +337,13 @@ class _HomeTabState extends State<HomeTab> {
                       const SizedBox(height: 16),
                   itemBuilder: (_, i) => _buildJobCard(_jobs[i]),
                 ),
-            ],
-          ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
+      ),
       ),
     );
   }
@@ -432,7 +461,14 @@ class _HomeTabState extends State<HomeTab> {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SubmitProposalScreen(jobId: job.id),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFC107),
                     foregroundColor: Colors.black,

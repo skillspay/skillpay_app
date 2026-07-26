@@ -15,6 +15,7 @@ const APPLICATION_INCLUDE = {
       averageRating: true,
       completedJobs: true,
       hourlyRate: true,
+      basedIn: true,
       categories: { include: { category: true } },
     },
   },

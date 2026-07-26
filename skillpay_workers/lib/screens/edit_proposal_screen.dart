@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_client.dart';
+import '../services/artisan_profile_service.dart';
 import 'proposal_submitted_modal.dart';
 
 class EditProposalScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
   final ImagePicker _picker = ImagePicker();
   final List<String> _uploadedPhotoUrls = [];
   bool _isUploading = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -25,16 +27,6 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
     final bio = widget.profileData?['bio']?.toString() ?? 
         'I am a professional and technical plumbing engineer...';
     _coverLetterController = TextEditingController(text: bio);
-  }
-
-  void _showSuccessModal() {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.5),
-      builder: (BuildContext context) {
-        return const ProposalSubmittedModal();
-      },
-    );
   }
 
   Future<void> _pickAndUploadPhoto() async {
@@ -65,7 +57,7 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to upload photo: $e'),
+            content: Text('Failed to upload image: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -74,6 +66,40 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
       if (mounted) {
         setState(() {
           _isUploading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveProposalDetails() async {
+    setState(() {
+      _isSaving = true;
+    });
+    
+    try {
+      String finalBio = _coverLetterController.text;
+      if (_uploadedPhotoUrls.isNotEmpty) {
+        finalBio += '\n\nAttached Photos:\n' + _uploadedPhotoUrls.join('\n');
+      }
+      
+      await ArtisanProfileService().updateProfile(bio: finalBio);
+      
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Proposal details saved.'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
         });
       }
     }
@@ -92,7 +118,9 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
     final name = profileData?['fullName']?.toString() ?? profileData?['full_name']?.toString() ?? 'Artisan Name';
     final categories = (profileData?['categories'] as List<dynamic>?) ?? [];
     final experience = profileData?['yearsExperience']?.toString() ?? profileData?['years_experience']?.toString() ?? '0';
-    final hourlyRate = profileData?['hourlyRate']?.toString() ?? profileData?['hourly_rate']?.toString() ?? '0';
+    final hourlyRate = widget.profileData?['hourlyRate']?.toString() ?? widget.profileData?['hourly_rate']?.toString() ?? '0';
+    final completedJobs = widget.profileData?['completedJobs']?.toString() ?? '0';
+    final rating = widget.profileData?['averageRating']?.toString() ?? widget.profileData?['rating']?.toString() ?? '0.0';
     final basedIn = profileData?['basedIn']?.toString() ?? profileData?['based_in']?.toString() ?? 'Location not specified';
     final workPreference = profileData?['workPreference']?.toString() ?? profileData?['work_preference']?.toString() ?? 'Not specified';
     
@@ -106,7 +134,7 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Submit Proposal',
+          'Edit Proposal',
           style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -298,11 +326,11 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
                 children: [
                   const Icon(Icons.star, color: Color(0xFFFFC107), size: 16),
                   const SizedBox(width: 4),
-                  const Text('4.7 Rating', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('$rating Rating', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   const SizedBox(width: 16),
                   Icon(Icons.check_circle_outline, color: Colors.grey[400], size: 16),
                   const SizedBox(width: 4),
-                  const Text('46 completed jobs', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('$completedJobs completed jobs', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
               
@@ -312,7 +340,7 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _showSuccessModal, // Show modal on save
+                  onPressed: _isSaving ? null : _saveProposalDetails,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFC107),
                     foregroundColor: Colors.black,
@@ -321,13 +349,15 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isSaving 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                      : const Text(
+                          'Save',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),

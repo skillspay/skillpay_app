@@ -76,10 +76,7 @@ class ProposalSubmittedModal extends StatelessWidget {
             height: 56,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close the modal
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ProposalDetailsScreen()),
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFC107),
@@ -90,7 +87,7 @@ class ProposalSubmittedModal extends StatelessWidget {
                 ),
               ),
               child: const Text(
-                'View details',
+                'Done',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
