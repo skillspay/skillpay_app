@@ -15,6 +15,23 @@ class MessagesService {
 
   RealtimeChannel? _activeChannel;
 
+  // ─── User Identity ────────────────────────────────────────────────────────
+  
+  static String? _cachedPrismaUserId;
+
+  /// Fetches the user's Prisma ID from the backend to determine if a message is from the current user.
+  Future<String?> getMyPrismaUserId() async {
+    if (_cachedPrismaUserId != null) return _cachedPrismaUserId;
+    try {
+      final data = await _api.get('/auth/me');
+      _cachedPrismaUserId = data['id']?.toString();
+      return _cachedPrismaUserId;
+    } catch (e) {
+      debugPrint('Error fetching my Prisma user ID: $e');
+      return null;
+    }
+  }
+
   // ─── Conversations ────────────────────────────────────────────────────────
 
   Future<List<ChatModel>> fetchConversations() async {

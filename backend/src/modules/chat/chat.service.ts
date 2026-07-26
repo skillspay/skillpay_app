@@ -80,6 +80,12 @@ export class ChatService {
               select: { id: true, fullName: true, profilePhoto: true },
             },
             category: { select: { id: true, name: true } },
+            applications: {
+              include: {
+                artisan: { select: { id: true, fullName: true, profilePhoto: true } }
+              },
+              take: 1,
+            }
           },
         },
         messages: {
@@ -94,7 +100,8 @@ export class ChatService {
     // Shape into a format the Flutter app expects
     return conversations.map((conv: any) => {
       const lastMsg = conv.messages?.[0];
-      const otherParty = artisan ? conv.job?.homeowner : null;
+      const otherPartyHomeowner = conv.job?.homeowner;
+      const otherPartyArtisan = conv.job?.applications?.[0]?.artisan;
 
       return {
         id: conv.id,
@@ -102,9 +109,9 @@ export class ChatService {
         updatedAt: conv.updatedAt,
         lastMessage: lastMsg?.message ?? '',
         unreadCount: 0, // TODO: compute with seen flag
-        homeowner: otherParty,
-        artisan: artisan ? { id: artisan.id } : null,
-        job: { title: conv.job.title, category: conv.job.category },
+        homeowner: otherPartyHomeowner,
+        artisan: artisan ? { id: artisan.id } : otherPartyArtisan,
+        job: { title: conv.job?.title, category: conv.job?.category },
       };
     });
   }
