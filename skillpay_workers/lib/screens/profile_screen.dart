@@ -32,6 +32,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _bioCtrl;
   late TextEditingController _yearsExpCtrl;
   late TextEditingController _hourlyRateCtrl;
+  late TextEditingController _basedInCtrl;
+  String? _workPreferenceValue;
 
   @override
   void initState() {
@@ -42,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _bioCtrl = TextEditingController();
     _yearsExpCtrl = TextEditingController();
     _hourlyRateCtrl = TextEditingController();
+    _basedInCtrl = TextEditingController();
     _fetchProfile();
   }
 
@@ -53,6 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _bioCtrl.dispose();
     _yearsExpCtrl.dispose();
     _hourlyRateCtrl.dispose();
+    _basedInCtrl.dispose();
     super.dispose();
   }
 
@@ -85,6 +89,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         p.yearsExperience > 0 ? p.yearsExperience.toString() : '';
     _hourlyRateCtrl.text =
         p.hourlyRate != null ? p.hourlyRate!.toStringAsFixed(2) : '';
+    _basedInCtrl.text = p.basedIn ?? '';
+    _workPreferenceValue = p.workPreference;
   }
 
   void _startEditing() => setState(() => _isEditing = true);
@@ -113,6 +119,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         hourlyRate: _hourlyRateCtrl.text.trim().isEmpty
             ? null
             : double.tryParse(_hourlyRateCtrl.text.trim()),
+        basedIn: _basedInCtrl.text.trim().isEmpty
+            ? null
+            : _basedInCtrl.text.trim(),
+        workPreference: _workPreferenceValue,
       );
 
       await _fetchProfile();
@@ -383,6 +393,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   const TextInputType.numberWithOptions(
                                       decimal: true),
                             ),
+                            _buildDivider(),
+                            _buildField(
+                              label: 'Location (Based in)',
+                              controller: _basedInCtrl,
+                              icon: Icons.location_on_outlined,
+                              editable: _isEditing,
+                              hint: 'e.g. London, UK',
+                            ),
+                            _buildDivider(),
+                            if (!_isEditing)
+                              _buildField(
+                                label: 'Work Preference',
+                                value: _profile?.workPreference ?? 'Not set',
+                                icon: Icons.work_outline,
+                                editable: false,
+                              )
+                            else
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.work_outline, color: Colors.grey, size: 20),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
+                                        value: _workPreferenceValue,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Work Preference',
+                                          border: InputBorder.none,
+                                        ),
+                                        items: const [
+                                          DropdownMenuItem(value: 'Short term', child: Text('Short term')),
+                                          DropdownMenuItem(value: 'Long term', child: Text('Long term')),
+                                          DropdownMenuItem(value: 'Short & Long term', child: Text('Short & Long term')),
+                                        ],
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _workPreferenceValue = val;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             _buildDivider(),
                             _buildField(
                               label: 'Categories',

@@ -310,18 +310,17 @@ class HistoryJobDetailsScreen extends StatelessWidget {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: status == 'Completed' ? null : () => _showCompletionModal(context),
+                      onPressed: booking.status == 'COMPLETED' ? null : () => _showCompletionModal(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green, // Fixed exactly to visual
+                        backgroundColor: const Color(0xFF1B1B1B),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
-                        disabledBackgroundColor: Colors.grey[300],
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Complete Job', style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: const Text('Complete'),
                     ),
                   ),
                 ],
@@ -333,7 +332,7 @@ class HistoryJobDetailsScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: status == 'Completed' ? null : () {
+                  onPressed: booking.status == 'COMPLETED' ? null : () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const UpdateJobScreen()),

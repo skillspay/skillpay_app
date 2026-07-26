@@ -28,6 +28,8 @@ class ArtisanProfileService {
     double? latitude,
     double? longitude,
     String? profilePhoto,
+    String? basedIn,
+    String? workPreference,
   }) async {
     try {
       await _api.patch('/artisans/profile', body: {
@@ -41,6 +43,8 @@ class ArtisanProfileService {
         'latitude': latitude,
         'longitude': longitude,
         'profilePhoto': profilePhoto,
+        'basedIn': basedIn,
+        'workPreference': workPreference,
       }..removeWhere((_, v) => v == null));
     } on ApiException catch (e) {
       throw Exception(e.message);

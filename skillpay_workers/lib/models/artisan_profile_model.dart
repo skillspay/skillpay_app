@@ -15,6 +15,8 @@ class ArtisanProfileModel {
   final String availabilityStatus; // AVAILABLE | BUSY | UNAVAILABLE
   final double? latitude;
   final double? longitude;
+  final String? basedIn;
+  final String? workPreference;
   final List<String> categoryNames;
 
   // User info
@@ -37,6 +39,8 @@ class ArtisanProfileModel {
     required this.availabilityStatus,
     this.latitude,
     this.longitude,
+    this.basedIn,
+    this.workPreference,
     required this.categoryNames,
     required this.email,
     this.phone,
@@ -68,8 +72,10 @@ class ArtisanProfileModel {
       averageRating: double.tryParse(map['averageRating']?.toString() ?? map['average_rating']?.toString() ?? '0') ?? 0.0,
       completedJobs: (map['completedJobs'] as int?) ?? (map['completed_jobs'] as int?) ?? 0,
       availabilityStatus: map['availabilityStatus']?.toString() ?? map['availability_status']?.toString() ?? 'AVAILABLE',
-      latitude: double.tryParse(map['latitude']?.toString() ?? ''),
-      longitude: double.tryParse(map['longitude']?.toString() ?? ''),
+      latitude: map['latitude'] != null ? double.tryParse(map['latitude'].toString()) : null,
+      longitude: map['longitude'] != null ? double.tryParse(map['longitude'].toString()) : null,
+      basedIn: map['basedIn']?.toString() ?? map['based_in']?.toString(),
+      workPreference: map['workPreference']?.toString() ?? map['work_preference']?.toString(),
       categoryNames: categoryNames,
       email: userObj?['email']?.toString() ?? map['email']?.toString() ?? '',
       phone: userObj?['phone']?.toString() ?? map['phone']?.toString(),

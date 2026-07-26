@@ -57,6 +57,8 @@ export class ArtisansService {
       availabilityStatus?: any;
       latitude?: number;
       longitude?: number;
+      basedIn?: string;
+      workPreference?: string;
     },
   ) {
     // Ensure profile exists

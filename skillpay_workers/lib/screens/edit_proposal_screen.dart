@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../services/api_client.dart';
 import 'proposal_submitted_modal.dart';
 
 class EditProposalScreen extends StatefulWidget {
@@ -12,6 +15,9 @@ class EditProposalScreen extends StatefulWidget {
 
 class _EditProposalScreenState extends State<EditProposalScreen> {
   late TextEditingController _coverLetterController;
+  final ImagePicker _picker = ImagePicker();
+  final List<String> _uploadedPhotoUrls = [];
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -24,18 +30,53 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
   void _showSuccessModal() {
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.5),
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          child: const ProposalSubmittedModal(),
-        );
+        return const ProposalSubmittedModal();
       },
     );
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+      
+      if (image == null) return;
+
+      setState(() {
+        _isUploading = true;
+      });
+
+      final response = await ApiClient.instance.uploadFile(
+        '/storage/job-image',
+        file: File(image.path),
+        fieldName: 'file',
+      );
+      
+      final url = (response as Map<String, dynamic>)['url'] as String;
+
+      setState(() {
+        _uploadedPhotoUrls.add(url);
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -52,6 +93,8 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
     final categories = (profileData?['categories'] as List<dynamic>?) ?? [];
     final experience = profileData?['yearsExperience']?.toString() ?? profileData?['years_experience']?.toString() ?? '0';
     final hourlyRate = profileData?['hourlyRate']?.toString() ?? profileData?['hourly_rate']?.toString() ?? '0';
+    final basedIn = profileData?['basedIn']?.toString() ?? profileData?['based_in']?.toString() ?? 'Location not specified';
+    final workPreference = profileData?['workPreference']?.toString() ?? profileData?['work_preference']?.toString() ?? 'Not specified';
     
     return Scaffold(
       backgroundColor: Colors.white,
@@ -134,9 +177,9 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
               // Specs
               _buildSpecRow('Experience', '$experience years +'),
               const SizedBox(height: 12),
-              _buildSpecRow('Based in', 'Location not specified'),
+              _buildSpecRow('Based in', basedIn),
               const SizedBox(height: 12),
-              _buildSpecRow('Work preference', 'Short & Long term'),
+              _buildSpecRow('Work preference', workPreference),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -187,49 +230,66 @@ class _EditProposalScreenState extends State<EditProposalScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50], 
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.grey[300]!,
-                    style: BorderStyle.solid,
+              GestureDetector(
+                onTap: _isUploading ? null : _pickAndUploadPhoto,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50], 
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.grey[300]!,
+                      style: BorderStyle.solid,
+                    ),
                   ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.backup_outlined,
-                      color: Colors.grey,
-                      size: 28,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Click to upload',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_isUploading)
+                        const CircularProgressIndicator(color: Colors.black)
+                      else ...[
+                        const Icon(
+                          Icons.backup_outlined,
+                          color: Colors.grey,
+                          size: 28,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Click to upload',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
               
               const SizedBox(height: 16),
               
-              // Already Uploaded Images (from previous screen)
-              Row(
-                children: [
-                  _buildMockWorkImage(),
-                  const SizedBox(width: 12),
-                  _buildMockWorkImage(),
-                  const SizedBox(width: 12),
-                  _buildMockWorkImage(),
-                ],
-              ),
+              if (_uploadedPhotoUrls.isNotEmpty)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _uploadedPhotoUrls.map((url) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            url,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               
               const SizedBox(height: 24),
               

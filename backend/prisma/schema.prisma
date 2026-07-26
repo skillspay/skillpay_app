@@ -194,6 +194,8 @@ model Artisan {
   latitude             Float?
   longitude            Float?
   availabilityStatus   AvailabilityStatus @default(AVAILABLE) @map("availability_status")
+  basedIn              String?            @map("based_in")
+  workPreference       String?            @map("work_preference")
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")
 

@@ -75,6 +75,8 @@ export class ArtisansController {
       availabilityStatus?: string;
       latitude?: number;
       longitude?: number;
+      basedIn?: string;
+      workPreference?: string;
     },
   ) {
     return this.artisansService.updateProfile(user.id, body);
