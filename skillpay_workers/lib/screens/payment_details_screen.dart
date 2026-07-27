@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
+import '../services/wallet_service.dart';
 
 class PaymentDetailsScreen extends StatefulWidget {
   const PaymentDetailsScreen({super.key});
@@ -12,9 +10,9 @@ class PaymentDetailsScreen extends StatefulWidget {
 }
 
 class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
-  final _supabase = Supabase.instance.client;
+  final _walletService = WalletService();
   bool _isLoading = true;
-  List<dynamic> _bankAccounts = [];
+  List<Map<String, dynamic>> _bankAccounts = [];
 
   final _bankNameController = TextEditingController();
   final _accountNameController = TextEditingController();
@@ -31,25 +29,16 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   Future<void> _fetchBankAccounts() async {
     setState(() => _isLoading = true);
     try {
-      final session = _supabase.auth.currentSession;
-      if (session == null) return;
-      
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/wallet/bank-accounts'),
-        headers: {
-          'Authorization': 'Bearer ${session.accessToken}',
-        },
-      );
-      
-      if (response.statusCode == 200) {
+      final accounts = await _walletService.fetchBankAccounts();
+      if (mounted) {
         setState(() {
-          _bankAccounts = jsonDecode(response.body);
+          _bankAccounts = accounts;
         });
       }
     } catch (e) {
       debugPrint('Error fetching bank accounts: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -65,27 +54,17 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
 
     setState(() => _submitting = true);
     try {
-      final session = _supabase.auth.currentSession;
-      if (session == null) return;
+      final success = await _walletService.addBankAccount({
+        'bankName': _bankNameController.text,
+        'accountName': _accountNameController.text,
+        'accountNumber': _accountNumberController.text,
+      });
 
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/wallet/bank-accounts'),
-        headers: {
-          'Authorization': 'Bearer ${session.accessToken}',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'bankName': _bankNameController.text,
-          'accountName': _accountNameController.text,
-          'accountNumber': _accountNumberController.text,
-        }),
-      );
-
-      if (response.statusCode == 201) {
+      if (success) {
         _bankNameController.clear();
         _accountNameController.clear();
         _accountNumberController.clear();
-        setState(() => _isAdding = false);
+        if (mounted) setState(() => _isAdding = false);
         _fetchBankAccounts();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Bank account added successfully')),
@@ -98,7 +77,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     } catch (e) {
       debugPrint('Error adding bank account: $e');
     } finally {
-      setState(() => _submitting = false);
+      if (mounted) setState(() => _submitting = false);
     }
   }
 

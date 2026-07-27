@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../config/api_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/wallet_service.dart';
 
 class WithdrawModal extends StatefulWidget {
   final VoidCallback onWithdrawSuccess;
@@ -15,7 +14,7 @@ class WithdrawModal extends StatefulWidget {
 
 class _WithdrawModalState extends State<WithdrawModal> {
   final _amountController = TextEditingController();
-  final _supabase = Supabase.instance.client;
+  final _walletService = WalletService();
   bool _isLoading = false;
 
   Future<void> _submitWithdrawal() async {
@@ -30,36 +29,17 @@ class _WithdrawModalState extends State<WithdrawModal> {
     setState(() => _isLoading = true);
 
     try {
-      final session = _supabase.auth.currentSession;
-      if (session == null) return;
-
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/wallet/withdraw'),
-        headers: {
-          'Authorization': 'Bearer ${session.accessToken}',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'amount': amount,
-        }),
+      await _walletService.requestWithdrawal(amount);
+      
+      Navigator.pop(context);
+      widget.onWithdrawSuccess();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Withdrawal request submitted for approval.')),
       );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        Navigator.pop(context);
-        widget.onWithdrawSuccess();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Withdrawal request submitted for approval.')),
-        );
-      } else {
-        final body = jsonDecode(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(body['message'] ?? 'Failed to submit request')),
-        );
-      }
     } catch (e) {
       debugPrint('Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('An error occurred')),
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

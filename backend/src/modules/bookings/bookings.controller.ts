@@ -71,4 +71,16 @@ export class BookingsController {
   complete(@Param('id') id: string) {
     return this.bookingsService.complete(id);
   }
+
+  @Patch(':id/approve')
+  @ApiOperation({ summary: 'Customer approve completed job and pay final fee' })
+  approveAndPay(@Param('id') id: string, @Req() req: any) {
+    return this.bookingsService.approveAndPay(id, req.user.sub);
+  }
+
+  @Patch('by-job/:jobId/approve')
+  @ApiOperation({ summary: 'Customer approve completed job by jobId' })
+  approveAndPayByJob(@Param('jobId') jobId: string, @Req() req: any) {
+    return this.bookingsService.approveAndPayByJob(jobId, req.user.sub);
+  }
 }

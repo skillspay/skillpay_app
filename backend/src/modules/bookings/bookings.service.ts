@@ -226,20 +226,64 @@ export class BookingsService {
     if (!booking) throw new NotFoundException(`Booking ${id} not found`);
 
     return this.prisma.$transaction(async (tx) => {
-      // Update artisan completed jobs count
-      await tx.artisan.update({
-        where: { id: booking.artisanId },
-        data: { completedJobs: { increment: 1 } },
-      });
       await tx.job.update({
         where: { id: booking.jobId },
         data: { status: 'COMPLETED' },
       });
 
-      // Calculate payout and credit wallet
+      // Notify customer (via email or other notification means)
+      try {
+        const homeownerUser = await this.prisma.user.findUnique({ where: { id: booking.homeowner.userId } });
+        if (homeownerUser && homeownerUser.email) {
+          await this.mailService.sendNotificationEmail(
+            homeownerUser.email,
+            'Job Completed - Action Required',
+            `Your job "${booking.job.title}" has been marked as completed by the artisan. Please log in to approve the job and release the final payment.`
+          );
+        }
+      } catch (e) {
+        console.error('Failed to send completion email to customer', e);
+      }
+
+      return tx.booking.update({
+        where: { id },
+        data: { status: 'COMPLETED', completionDate: new Date() },
+        include: BOOKING_INCLUDE,
+      });
+    });
+  }
+
+  // ─── Approve and Pay ──────────────────────────────────────────────────────
+
+  async approveAndPay(id: string, customerUserId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        application: true,
+        job: true,
+        artisan: true,
+        homeowner: true,
+      },
+    });
+
+    if (!booking) throw new NotFoundException(`Booking ${id} not found`);
+    if (booking.homeowner.userId !== customerUserId) throw new BadRequestException('Not your booking');
+    if (booking.status !== 'COMPLETED') throw new BadRequestException('Booking is not completed yet');
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Mark artisan completed jobs count increment (since it's now officially approved)
+      await tx.artisan.update({
+        where: { id: booking.artisanId },
+        data: { completedJobs: { increment: 1 } },
+      });
+
+      // 2. Process final payment (Simulation - Assume customer pays or balance deducted)
+      // TODO: Actual payment gateway integration would go here if charging a card.
+
+      // 3. Calculate payout and credit worker's wallet
       const amountStr = booking.application?.price?.toString() || booking.job?.budget?.toString();
       const amount = parseFloat(amountStr || '0');
-      
+
       if (amount > 0) {
         const commissionPercent = await this.settingsService.getCommissionPercentage();
         const deduction = amount * (commissionPercent / 100);
@@ -252,11 +296,20 @@ export class BookingsService {
         );
       }
 
-      return tx.booking.update({
+      // Return the updated booking
+      return tx.booking.findUnique({
         where: { id },
-        data: { status: 'COMPLETED', completionDate: new Date() },
         include: BOOKING_INCLUDE,
       });
     });
+  }
+
+  async approveAndPayByJob(jobId: string, customerUserId: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { jobId },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!booking) throw new NotFoundException('Booking not found for this job');
+    return this.approveAndPay(booking.id, customerUserId);
   }
 }
