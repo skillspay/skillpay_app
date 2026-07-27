@@ -66,7 +66,7 @@ class BookingModel {
       jobTimeline: jobObj?['timeline']?.toString(),
       jobPreferredDate: jobObj?['preferredDate']?.toString(),
       jobCategoryName: jobObj?['category']?['name']?.toString(),
-      amount: double.tryParse(applicationObj?['price']?.toString() ?? ''),
+      amount: double.tryParse(applicationObj?['price']?.toString() ?? '') ?? double.tryParse(jobObj?['budget']?.toString() ?? ''),
       homeownerName: homeownerObj?['fullName']?.toString() ?? homeownerObj?['full_name']?.toString(),
       homeownerPhoto: homeownerObj?['profilePhoto']?.toString(),
     );

@@ -8,6 +8,7 @@ import 'security_screen.dart';
 import 'help_support_screen.dart';
 import 'about_screen.dart';
 import 'login_screen.dart';
+import 'payment_details_screen.dart';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
@@ -84,6 +85,18 @@ class SettingsTab extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildSettingsTile(
+                  context: context,
+                  title: 'Payment Details',
+                  icon: Icons.account_balance_outlined,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PaymentDetailsScreen()),
                     );
                   },
                 ),

@@ -62,7 +62,7 @@ class HistoryJobDetailsScreen extends StatelessWidget {
           const SizedBox(height: 8),
           
           const Text(
-            'Confirm Job Completion',
+            'Complete Job',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -73,7 +73,7 @@ class HistoryJobDetailsScreen extends StatelessWidget {
           const SizedBox(height: 16),
           
           const Text(
-            'Are you sure you want to confirm that this job has been fully completed and you\'re satisfied with the job done?',
+            'Are you sure you want to mark this job as completed? This will notify the customer to approve the completed job.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -137,7 +137,7 @@ class HistoryJobDetailsScreen extends StatelessWidget {
                       try {
                         await BookingsService().completeJob(booking.id);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Job marked as completed!')));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Job marked as completed! Notification sent to customer.')));
                           Navigator.pop(context, true);
                         }
                       } catch (e) {
@@ -239,11 +239,7 @@ class HistoryJobDetailsScreen extends StatelessWidget {
               // Financials Row
               Row(
                 children: [
-                  Expanded(child: _buildFinancialBox('Total Cost', '\$${booking.amount?.toStringAsFixed(2) ?? '0.00'}')),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildFinancialBox('Prepayment', '\$0.00')),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildFinancialBox('Balance', '\$${booking.amount?.toStringAsFixed(2) ?? '0.00'}')),
+                  Expanded(child: _buildFinancialBox('Proposed Cost', '\$${booking.amount?.toStringAsFixed(2) ?? '0.00'}')),
                 ],
               ),
               

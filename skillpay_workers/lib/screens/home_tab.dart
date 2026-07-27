@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/api_config.dart';
+import 'withdraw_modal.dart';
 import '../services/jobs_service.dart';
 import '../services/wallet_service.dart';
 import '../services/artisan_profile_service.dart';
@@ -267,7 +270,16 @@ class _HomeTabState extends State<HomeTab> {
                           ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => WithdrawModal(
+                            onWithdrawSuccess: _fetchData,
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white12,
                         foregroundColor: Colors.white,

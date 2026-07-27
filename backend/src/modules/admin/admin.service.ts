@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReportStatus, VerificationStatus } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AdminService {
@@ -51,6 +52,82 @@ export class AdminService {
     });
 
     return updatedDoc;
+  }
+
+  // ─── Withdrawal Requests ────────────────────────────────────────────────────
+
+  async getWithdrawals() {
+    return this.prisma.withdrawalRequest.findMany({
+      include: {
+        user: {
+          select: { email: true, homeowner: true, artisan: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async approveWithdrawal(id: string, adminId: string, adminNote?: string) {
+    const request = await this.prisma.withdrawalRequest.findUnique({ where: { id } });
+    if (!request || request.status !== 'PENDING') throw new BadRequestException('Invalid withdrawal request');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.withdrawalRequest.update({
+        where: { id },
+        data: { status: 'APPROVED', adminNote },
+      });
+
+      const wallet = await tx.wallet.update({
+        where: { userId: request.userId },
+        data: { balance: { decrement: request.amount } },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          amount: request.amount,
+          type: 'WITHDRAWAL',
+          reference: uuidv4(),
+          description: `Withdrawal approved to ${request.bankName} - ${request.accountNumber}`,
+        },
+      });
+
+      await tx.adminLog.create({
+        data: {
+          adminId,
+          action: 'APPROVE_WITHDRAWAL',
+          table: 'withdrawal_requests',
+          recordId: id,
+          metadata: { details: `Approved withdrawal of ${request.amount}` },
+        },
+      });
+
+      return updated;
+    });
+  }
+
+  async rejectWithdrawal(id: string, adminId: string, adminNote: string) {
+    const request = await this.prisma.withdrawalRequest.findUnique({ where: { id } });
+    if (!request || request.status !== 'PENDING') throw new BadRequestException('Invalid withdrawal request');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.withdrawalRequest.update({
+        where: { id },
+        data: { status: 'REJECTED', adminNote },
+      });
+
+      await tx.adminLog.create({
+        data: {
+          adminId,
+          action: 'REJECT_WITHDRAWAL',
+          table: 'withdrawal_requests',
+          recordId: id,
+          metadata: { details: `Rejected withdrawal of ${request.amount}. Reason: ${adminNote}` },
+        },
+      });
+
+      return updated;
+    });
   }
 
   // ─── Reports / Disputes ─────────────────────────────────────────────────────

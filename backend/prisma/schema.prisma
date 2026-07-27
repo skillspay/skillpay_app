@@ -146,6 +146,8 @@ model User {
   wallet               Wallet?
   adminLogs            AdminLog[]
   addresses            Address[]
+  bankAccounts         BankAccount[]
+  withdrawalRequests   WithdrawalRequest[]
 
   @@index([role])
   @@index([status])
@@ -546,4 +548,58 @@ model AdminLog {
   admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@map("admin_logs")
+}
+
+// ─── System Settings ──────────────────────────────────────────────────────────
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+// ─── Bank Accounts ────────────────────────────────────────────────────────────
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  bankName      String   @map("bank_name")
+  accountName   String   @map("account_name")
+  accountNumber String   @map("account_number")
+  isDefault     Boolean  @default(false) @map("is_default")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bank_accounts")
+}
+
+// ─── Withdrawal Requests ──────────────────────────────────────────────────────
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model WithdrawalRequest {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  amount        Decimal  @db.Decimal(10, 2)
+  status        WithdrawalStatus @default(PENDING)
+  bankName      String   @map("bank_name")
+  accountName   String   @map("account_name")
+  accountNumber String   @map("account_number")
+  adminNote     String?  @map("admin_note")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("withdrawal_requests")
 }

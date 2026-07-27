@@ -120,4 +120,21 @@ export const api = {
         body: JSON.stringify({ adminNote }),
       }),
   },
+  settings: {
+    getCommission: () => request('/settings/commission'),
+    updateCommission: (percentage: number) => request('/settings/commission', { method: 'PATCH', body: JSON.stringify({ percentage }) }),
+  },
+  withdrawals: {
+    list: () => request('/admin/withdrawals'),
+    approve: (id: string, adminNote?: string) => 
+      request(`/admin/withdrawals/${id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ adminNote }),
+      }),
+    reject: (id: string, adminNote: string) => 
+      request(`/admin/withdrawals/${id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ adminNote }),
+      }),
+  },
 };

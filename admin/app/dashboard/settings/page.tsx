@@ -16,6 +16,9 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwResult, setPwResult] = useState<{ success: boolean; message: string } | null>(null);
   const [pwLoading, setPwLoading] = useState(false);
+  const [commission, setCommission] = useState('');
+  const [comResult, setComResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [comLoading, setComLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -28,7 +31,16 @@ export default function SettingsPage() {
         setLoading(false);
       }
     }
+    async function loadSettings() {
+      try {
+        const data = await api.settings.getCommission();
+        setCommission(data.admin_commission_percentage?.toString() || '10');
+      } catch (err) {
+        console.error('Failed to load settings', err);
+      }
+    }
     load();
+    loadSettings();
   }, []);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -51,9 +63,23 @@ export default function SettingsPage() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setPwResult({ success: false, message: err.message || 'Failed to update password.' });
+      setPwResult({ success: false, message: err.message });
     } finally {
       setPwLoading(false);
+    }
+  };
+
+  const handleCommissionChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setComLoading(true);
+    setComResult(null);
+    try {
+      await api.settings.updateCommission(parseFloat(commission));
+      setComResult({ success: true, message: 'Commission updated successfully.' });
+    } catch (err: any) {
+      setComResult({ success: false, message: err.message || 'Failed to update commission.' });
+    } finally {
+      setComLoading(false);
     }
   };
 
@@ -167,6 +193,53 @@ export default function SettingsPage() {
             </form>
           </CardContent>
         </div>
+      </div>
+
+      {/* Platform Settings */}
+      <div className="border border-gray-100 rounded-xl bg-white overflow-hidden mt-8">
+        <CardHeader>
+          <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Shield size={20} className="text-amber-500" />
+            Platform Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCommissionChange} className="max-w-md space-y-4">
+            {comResult && (
+              <div
+                className={`p-3 rounded-xl text-sm font-medium border ${
+                  comResult.success
+                    ? 'bg-green-50 text-green-700 border-green-200'
+                    : 'bg-red-50 text-red-700 border-red-200'
+                }`}
+              >
+                {comResult.message}
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-gray-700">Platform Commission Percentage (%)</label>
+              <Input
+                type="number"
+                required
+                min="0"
+                max="100"
+                step="0.1"
+                placeholder="e.g. 10"
+                value={commission}
+                onChange={(e) => setCommission(e.target.value)}
+                className="h-11 rounded-xl border-gray-300 focus:border-amber-400 focus:ring-amber-400"
+              />
+              <p className="text-xs text-gray-500">This percentage is deducted from artisan payouts upon job completion.</p>
+            </div>
+            <Button
+              type="submit"
+              disabled={comLoading}
+              className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-xl"
+            >
+              {comLoading ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </form>
+        </CardContent>
       </div>
 
       {/* Security note */}

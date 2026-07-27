@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { WalletService } from '../wallet/wallet.service';
+import { SettingsService } from '../settings/settings.service';
 
 const BOOKING_INCLUDE = {
   job: {
@@ -31,6 +33,8 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly walletService: WalletService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   // ─── Create booking from application ─────────────────────────────────────
@@ -211,7 +215,14 @@ export class BookingsService {
   // ─── Complete job ─────────────────────────────────────────────────────────
 
   async complete(id: string) {
-    const booking = await this.prisma.booking.findUnique({ where: { id } });
+    const booking = await this.prisma.booking.findUnique({ 
+      where: { id },
+      include: {
+        application: true,
+        job: true,
+        artisan: true,
+      },
+    });
     if (!booking) throw new NotFoundException(`Booking ${id} not found`);
 
     return this.prisma.$transaction(async (tx) => {
@@ -224,6 +235,23 @@ export class BookingsService {
         where: { id: booking.jobId },
         data: { status: 'COMPLETED' },
       });
+
+      // Calculate payout and credit wallet
+      const amountStr = booking.application?.price?.toString() || booking.job?.budget?.toString();
+      const amount = parseFloat(amountStr || '0');
+      
+      if (amount > 0) {
+        const commissionPercent = await this.settingsService.getCommissionPercentage();
+        const deduction = amount * (commissionPercent / 100);
+        const payout = amount - deduction;
+        
+        await this.walletService.credit(
+          booking.artisan.userId, 
+          payout, 
+          `Payment for job ${booking.job?.title || id} (Admin commission: ${commissionPercent}%)`
+        );
+      }
+
       return tx.booking.update({
         where: { id },
         data: { status: 'COMPLETED', completionDate: new Date() },

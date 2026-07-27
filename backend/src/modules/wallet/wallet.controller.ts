@@ -32,12 +32,28 @@ export class WalletController {
     return this.walletService.getTransactions(user.id);
   }
 
+  @Get('bank-accounts')
+  @ApiOperation({ summary: 'Get saved bank accounts' })
+  getBankAccounts(@CurrentUser() user: AuthenticatedUser) {
+    return this.walletService.getBankAccounts(user.id);
+  }
+
+  @Post('bank-accounts')
+  @ApiOperation({ summary: 'Add a new bank account' })
+  addBankAccount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() data: { bankName: string; accountName: string; accountNumber: string; isDefault?: boolean },
+  ) {
+    return this.walletService.addBankAccount(user.id, data);
+  }
+
   @Post('withdraw')
   @ApiOperation({ summary: 'Request withdrawal from wallet' })
   withdraw(
     @CurrentUser() user: AuthenticatedUser,
     @Body('amount') amount: number,
+    @Body('bankAccountId') bankAccountId?: string,
   ) {
-    return this.walletService.withdraw(user.id, amount);
+    return this.walletService.requestWithdrawal(user.id, amount, bankAccountId);
   }
 }

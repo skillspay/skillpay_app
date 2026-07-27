@@ -26,6 +26,7 @@ import {
   ChevronDown,
   Plus,
   ChevronLeft,
+  Wallet,
 } from 'lucide-react';
 
 const navGroups = [
@@ -62,6 +63,7 @@ const navGroups = [
     items: [
       { name: 'Reports', href: '/dashboard/reports', icon: AlertOctagon },
       { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
+      { name: 'Withdrawals', href: '/dashboard/withdrawals', icon: Wallet },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ]
   },

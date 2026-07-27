@@ -24,6 +24,34 @@ export class AdminController {
     return this.adminService.getPendingVerifications();
   }
 
+  // ─── Withdrawal Requests ────────────────────────────────────────────────────
+
+  @Get('withdrawals')
+  @ApiOperation({ summary: 'Get all withdrawal requests' })
+  getWithdrawals() {
+    return this.adminService.getWithdrawals();
+  }
+
+  @Post('withdrawals/:id/approve')
+  @ApiOperation({ summary: 'Approve a withdrawal request' })
+  approveWithdrawal(
+    @Param('id') id: string,
+    @CurrentUser() admin: AuthenticatedUser,
+    @Body('adminNote') adminNote?: string,
+  ) {
+    return this.adminService.approveWithdrawal(id, admin.id, adminNote);
+  }
+
+  @Post('withdrawals/:id/reject')
+  @ApiOperation({ summary: 'Reject a withdrawal request' })
+  rejectWithdrawal(
+    @Param('id') id: string,
+    @CurrentUser() admin: AuthenticatedUser,
+    @Body('adminNote') adminNote: string,
+  ) {
+    return this.adminService.rejectWithdrawal(id, admin.id, adminNote);
+  }
+
   @Post('verifications/:id')
   @ApiOperation({ summary: 'Review and approve/reject a verification document' })
   async reviewVerification(
