@@ -15,9 +15,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Skillpay Admin",
   description: "Skillpay platform administration portal",
-  icons: {
-    icon: "/logo.png",
-  }
 };
 
 export default function RootLayout({
