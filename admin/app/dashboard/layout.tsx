@@ -136,9 +136,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Profile Header */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between cursor-pointer group">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center font-bold text-lg shadow-sm">
-              <span>S</span>
-            </div>
+            <img src="/logo.png" alt="Skillpay Logo" className="w-10 h-10 object-contain rounded-xl" />
             <div className="flex flex-col">
               <h1 className="font-bold text-sm tracking-tight text-gray-900 group-hover:text-amber-600 transition-colors">
                 helpdesk
