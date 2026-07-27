@@ -15,6 +15,7 @@ export default function CategoriesControl() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
+  const [image, setImage] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const fetchCategories = async () => {
@@ -38,10 +39,11 @@ export default function CategoriesControl() {
     if (!name.trim()) return;
 
     try {
-      await api.categories.create({ name, description, icon });
+      await api.categories.create({ name, description, icon, image });
       setName('');
       setDescription('');
       setIcon('');
+      setImage('');
       setDialogOpen(false);
       fetchCategories();
     } catch (err) {
@@ -104,6 +106,15 @@ export default function CategoriesControl() {
                   className="h-11 rounded-xl focus:border-amber-400 focus:ring-amber-400 border-gray-300"
                 />
               </div>
+              <div className="space-y-1">
+                <label className="text-sm font-semibold text-gray-700">Image URL</label>
+                <Input
+                  placeholder="https://example.com/image.png"
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  className="h-11 rounded-xl focus:border-amber-400 focus:ring-amber-400 border-gray-300"
+                />
+              </div>
               <DialogFooter className="pt-4">
                 <Button
                   type="submit"
@@ -135,6 +146,7 @@ export default function CategoriesControl() {
               <Table>
                 <TableHeader className="bg-gray-50">
                   <TableRow>
+                    <TableHead className="font-bold text-gray-700">Image</TableHead>
                     <TableHead className="font-bold text-gray-700">Name</TableHead>
                     <TableHead className="font-bold text-gray-700">Description</TableHead>
                     <TableHead className="font-bold text-gray-700">Icon</TableHead>
@@ -145,6 +157,15 @@ export default function CategoriesControl() {
                 <TableBody>
                   {categories.map((c) => (
                     <TableRow key={c.id} className="hover:bg-gray-50/50">
+                      <TableCell>
+                        {c.image ? (
+                          <img src={c.image} alt={c.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <span className="text-xs text-gray-400">No Img</span>
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-semibold text-gray-900">{c.name}</TableCell>
                       <TableCell className="text-gray-600 font-medium">{c.description || '—'}</TableCell>
                       <TableCell className="font-mono text-xs text-gray-400">{c.icon || '—'}</TableCell>

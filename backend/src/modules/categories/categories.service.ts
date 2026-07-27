@@ -18,17 +18,18 @@ export class CategoriesService {
     });
   }
 
-  async create(data: { name: string; icon?: string; description?: string }) {
+  async create(data: { name: string; icon?: string; image?: string; description?: string }) {
     return this.prisma.category.create({
       data: {
         name: data.name,
         icon: data.icon,
+        image: data.image,
         description: data.description,
       },
     });
   }
 
-  async update(id: string, data: { name?: string; icon?: string; description?: string; isActive?: boolean }) {
+  async update(id: string, data: { name?: string; icon?: string; image?: string; description?: string; isActive?: boolean }) {
     const category = await this.prisma.category.findUnique({ where: { id } });
     if (!category) {
       throw new NotFoundException(`Category with ID ${id} not found`);

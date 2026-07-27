@@ -238,6 +238,7 @@ model Category {
   id          String   @id @default(uuid())
   name        String   @unique
   icon        String?
+  image       String?  @map("image_url")
   description String?
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")

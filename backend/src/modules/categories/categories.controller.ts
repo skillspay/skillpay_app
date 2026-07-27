@@ -25,7 +25,7 @@ export class CategoriesController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @Post()
   @ApiOperation({ summary: 'Create service category (admin)' })
-  create(@Body() body: { name: string; icon?: string; description?: string }) {
+  create(@Body() body: { name: string; icon?: string; image?: string; description?: string }) {
     return this.categoriesService.create(body);
   }
 
@@ -36,7 +36,7 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Update service category (admin)' })
   update(
     @Param('id') id: string,
-    @Body() body: { name?: string; icon?: string; description?: string; isActive?: boolean },
+    @Body() body: { name?: string; icon?: string; image?: string; description?: string; isActive?: boolean },
   ) {
     return this.categoriesService.update(id, body);
   }

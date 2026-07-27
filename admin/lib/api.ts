@@ -78,12 +78,12 @@ export const api = {
   },
   categories: {
     list: () => request('/categories'),
-    create: (data: { name: string; icon?: string; description?: string }) =>
+    create: (data: { name: string; icon?: string; image?: string; description?: string }) =>
       request('/categories', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: { name?: string; icon?: string; description?: string; isActive?: boolean }) =>
+    update: (id: string, data: { name?: string; icon?: string; image?: string; description?: string; isActive?: boolean }) =>
       request(`/categories/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
