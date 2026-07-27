@@ -163,6 +163,7 @@ export default function CategoriesControl() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
       {/* Main Content */}
       <div className="flex-1 p-0 overflow-auto">
         <CardContent>
