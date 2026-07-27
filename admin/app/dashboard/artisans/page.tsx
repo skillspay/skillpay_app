@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Search, Filter, GripHorizontal, Plus, MoreVertical, ChevronDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function ArtisanVerification() {
   const [verifications, setVerifications] = useState<any[]>([]);
@@ -51,16 +51,36 @@ export default function ArtisanVerification() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Artisan Verifications</h1>
-        <p className="text-gray-500 mt-1">Review documents and verify identity/business qualifications for artisans.</p>
+    <div className="flex flex-col h-full bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h2 className="text-lg font-bold text-gray-900">Artisan Verifications</h2>
       </div>
 
-      <Card className="border-gray-200 shadow-sm rounded-2xl bg-white">
-        <CardHeader>
-          <CardTitle className="text-lg font-bold text-gray-900">Pending Verification Requests</CardTitle>
-        </CardHeader>
+      {/* Table Control Bar */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <Search size={16} />
+            <span className="text-[13px] font-medium">Search</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <Filter size={16} />
+            <span className="text-[13px] font-medium">Filters</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <GripHorizontal size={16} />
+            <span className="text-[13px] font-medium">Group by</span>
+          </div>
+        </div>
+        
+        <Button className="bg-amber-500 hover:bg-amber-600 text-white rounded shadow-sm font-semibold h-9 px-4 text-[13px]">
+          <Plus size={16} className="mr-2" />
+          Export Data
+        </Button>
+      </div>
+      {/* Main Content */}
+      <div className="flex-1 p-0 overflow-auto">
         <CardContent>
           {loading ? (
             <div className="flex justify-center items-center py-12">
@@ -71,34 +91,38 @@ export default function ArtisanVerification() {
               No pending verifications at this time.
             </div>
           ) : (
-            <div className="border border-gray-100 rounded-xl overflow-hidden">
+            <div className="w-full">
               <Table>
-                <TableHeader className="bg-gray-50">
-                  <TableRow>
-                    <TableHead className="font-bold text-gray-700">Artisan Name</TableHead>
-                    <TableHead className="font-bold text-gray-700">Document Type</TableHead>
-                    <TableHead className="font-bold text-gray-700">Submission Date</TableHead>
-                    <TableHead className="font-bold text-gray-700">File Attachment</TableHead>
-                    <TableHead className="font-bold text-gray-700 text-right">Review Action</TableHead>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b border-gray-100">
+                    <TableHead className="w-12 px-6"><Checkbox className="border-gray-300 rounded-sm" /></TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Artisan Name <ChevronDown size={12} className="inline ml-1" /></TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Document Type</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Submission Date</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">File Attachment</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10 text-right pr-6">Review Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {verifications.map((v) => (
-                    <TableRow key={v.id} className="hover:bg-gray-50/50">
-                      <TableCell className="font-medium text-gray-900">
-                        {v.artisan?.userId ? (
-                          <a href={`/dashboard/users/${v.artisan.userId}`} className="hover:underline hover:text-amber-600 transition-colors">
-                            {v.artisan?.fullName || 'N/A'}
-                          </a>
-                        ) : (
-                          v.artisan?.fullName || 'N/A'
-                        )}
+                    <TableRow key={v.id} className="hover:bg-gray-50 border-b border-gray-50">
+                      <TableCell className="px-6"><Checkbox className="border-gray-300 rounded-sm" /></TableCell>
+                      <TableCell>
+                        <div className="text-[13px] font-medium text-gray-900">
+                          {v.artisan?.userId ? (
+                            <a href={`/dashboard/users/${v.artisan.userId}`} className="hover:underline hover:text-amber-600 transition-colors">
+                              {v.artisan?.fullName || 'N/A'}
+                            </a>
+                          ) : (
+                            v.artisan?.fullName || 'N/A'
+                          )}
+                        </div>
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{v.artisan?.id}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="font-semibold">{v.type}</Badge>
+                        <span className="px-2 py-0.5 rounded border border-gray-300 text-[10px] font-bold text-gray-600 uppercase">{v.type}</span>
                       </TableCell>
-                      <TableCell className="text-gray-600 font-medium">
+                      <TableCell className="text-[13px] text-gray-600 font-medium">
                         {new Date(v.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
@@ -106,20 +130,25 @@ export default function ArtisanVerification() {
                           href={v.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-1.5 text-amber-500 hover:text-amber-600 font-bold transition-colors"
+                          className="inline-flex items-center space-x-1.5 text-amber-500 hover:text-amber-600 font-bold transition-colors text-[12px]"
                         >
                           <span>View Doc</span>
                           <ExternalLink size={14} />
                         </a>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          className="bg-amber-400 hover:bg-amber-500 text-white rounded-lg font-semibold"
-                          onClick={() => openDecisionDialog(v)}
-                        >
-                          Review & Decide
-                        </Button>
+                      <TableCell className="text-right pr-6">
+                        <div className="flex items-center justify-end gap-3">
+                          <Button
+                            size="sm"
+                            className="bg-amber-500 hover:bg-amber-600 text-white rounded shadow-sm font-semibold h-7 px-3 text-[11px]"
+                            onClick={() => openDecisionDialog(v)}
+                          >
+                            Review & Decide
+                          </Button>
+                          <button className="text-gray-400 hover:text-gray-600">
+                            <MoreVertical size={16} />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -128,7 +157,17 @@ export default function ArtisanVerification() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </div>
+
+      {/* Pagination (Static for now) */}
+      <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100">
+        <p className="text-[13px] text-gray-500">Showing <span className="font-medium text-gray-900">{verifications.length}</span> of {verifications.length}</p>
+        <div className="flex items-center gap-1">
+          <button className="w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50" disabled>&lt;</button>
+          <button className="w-8 h-8 flex items-center justify-center rounded text-[13px] font-medium bg-amber-500 text-white">1</button>
+          <button className="w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50" disabled>&gt;</button>
+        </div>
+      </div>
 
       {/* Decision Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

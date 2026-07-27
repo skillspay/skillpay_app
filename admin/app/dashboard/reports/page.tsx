@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Search, Filter, GripHorizontal, Plus, MoreVertical, ChevronDown, Check, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function ReportsControl() {
   const [reports, setReports] = useState<any[]>([]);
@@ -58,29 +59,50 @@ export default function ReportsControl() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'OPEN':
-        return <Badge className="bg-amber-100 text-amber-800 border-none font-semibold">Open</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-amber-400 text-[10px] font-bold text-amber-600 uppercase">Open</span>;
       case 'UNDER_REVIEW':
-        return <Badge className="bg-blue-100 text-blue-800 border-none font-semibold">Under Review</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-blue-400 text-[10px] font-bold text-blue-600 uppercase">Under Review</span>;
       case 'RESOLVED':
-        return <Badge className="bg-green-100 text-green-800 border-none font-semibold">Resolved</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-green-400 text-[10px] font-bold text-green-600 uppercase">Resolved</span>;
       case 'DISMISSED':
-        return <Badge className="bg-gray-100 text-gray-500 border-none font-semibold">Dismissed</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-gray-400 text-[10px] font-bold text-gray-600 uppercase">Dismissed</span>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800 border-none font-semibold">{status}</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-gray-400 text-[10px] font-bold text-gray-600 uppercase">{status}</span>;
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Disputes & Reports</h1>
-        <p className="text-gray-500 mt-1">Investigate and settle user disputes, reviews flaggings, and behavioral reports.</p>
+    <div className="flex flex-col h-full bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h2 className="text-lg font-bold text-gray-900">Disputes & Reports</h2>
       </div>
 
-      <Card className="border-gray-200 shadow-sm rounded-2xl bg-white">
-        <CardHeader>
-          <CardTitle className="text-lg font-bold text-gray-900">Active Reports List</CardTitle>
-        </CardHeader>
+      {/* Table Control Bar */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <Search size={16} />
+            <span className="text-[13px] font-medium">Search</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <Filter size={16} />
+            <span className="text-[13px] font-medium">Filters</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <GripHorizontal size={16} />
+            <span className="text-[13px] font-medium">Group by</span>
+          </div>
+        </div>
+        
+        <button className="bg-amber-500 hover:bg-amber-600 text-white rounded shadow-sm font-semibold h-9 px-4 text-[13px] flex items-center">
+          <Plus size={16} className="mr-2" />
+          Export Data
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-0 overflow-auto">
         <CardContent>
           {loading ? (
             <div className="flex justify-center items-center py-12">
@@ -91,50 +113,57 @@ export default function ReportsControl() {
               No reports active or pending resolution.
             </div>
           ) : (
-            <div className="border border-gray-100 rounded-xl overflow-hidden">
+            <div className="w-full">
               <Table>
-                <TableHeader className="bg-gray-50">
-                  <TableRow>
-                    <TableHead className="font-bold text-gray-700">Reporter</TableHead>
-                    <TableHead className="font-bold text-gray-700">Reported User</TableHead>
-                    <TableHead className="font-bold text-gray-700">Reason</TableHead>
-                    <TableHead className="font-bold text-gray-700">Status</TableHead>
-                    <TableHead className="font-bold text-gray-700 text-right">Actions</TableHead>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b border-gray-100">
+                    <TableHead className="w-12 px-6"><Checkbox className="border-gray-300 rounded-sm" /></TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Reporter <ChevronDown size={12} className="inline ml-1" /></TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Reported User</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Reason</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Status</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10 text-right pr-6">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {reports.map((r) => (
-                    <TableRow key={r.id} className="hover:bg-gray-50/50">
-                      <TableCell className="font-medium text-gray-900">
-                        {r.reportedBy?.email}
+                    <TableRow key={r.id} className="hover:bg-gray-50 border-b border-gray-50">
+                      <TableCell className="px-6"><Checkbox className="border-gray-300 rounded-sm" /></TableCell>
+                      <TableCell>
+                        <div className="font-semibold text-gray-900 text-[13px]">{r.reportedBy?.email || '—'}</div>
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{r.reportedBy?.id}</div>
                       </TableCell>
-                      <TableCell className="font-medium text-gray-900">
-                        {r.reportedUser?.email}
+                      <TableCell>
+                        <div className="font-medium text-gray-700 text-[13px]">{r.reportedUser?.email || '—'}</div>
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{r.reportedUser?.id}</div>
                       </TableCell>
-                      <TableCell className="text-gray-600 font-medium max-w-xs truncate">{r.reason}</TableCell>
+                      <TableCell className="text-[13px] text-gray-600 font-medium max-w-[250px] truncate">{r.reason}</TableCell>
                       <TableCell>{getStatusBadge(r.status)}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        {r.status === 'OPEN' && (
-                          <>
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 text-white rounded-lg"
-                              onClick={() => openDecisionDialog(r, 'RESOLVED')}
-                            >
-                              Resolve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-red-600 border-red-200 hover:bg-red-50 rounded-lg"
-                              onClick={() => openDecisionDialog(r, 'DISMISSED')}
-                            >
-                              Dismiss
-                            </Button>
-                          </>
-                        )}
+                      <TableCell className="text-right pr-6">
+                        <div className="flex items-center justify-end gap-2">
+                          {r.status === 'OPEN' ? (
+                            <>
+                              <button
+                                className="w-8 h-8 rounded flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                onClick={() => openDecisionDialog(r, 'RESOLVED')}
+                                title="Resolve"
+                              >
+                                <Check size={16} />
+                              </button>
+                              <button
+                                className="w-8 h-8 rounded flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                onClick={() => openDecisionDialog(r, 'DISMISSED')}
+                                title="Dismiss"
+                              >
+                                <X size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <button className="text-gray-400 hover:text-gray-600">
+                              <MoreVertical size={16} />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -143,7 +172,17 @@ export default function ReportsControl() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100">
+        <p className="text-[13px] text-gray-500">Showing <span className="font-medium text-gray-900">{reports.length}</span> of {reports.length}</p>
+        <div className="flex items-center gap-1">
+          <button className="w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50" disabled>&lt;</button>
+          <button className="w-8 h-8 flex items-center justify-center rounded text-[13px] font-medium bg-amber-500 text-white">1</button>
+          <button className="w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50" disabled>&gt;</button>
+        </div>
+      </div>
 
       {/* Decision Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

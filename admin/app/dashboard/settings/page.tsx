@@ -66,7 +66,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto pb-10">
       <div>
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Settings</h1>
         <p className="text-gray-500 mt-1">Manage your admin account and preferences.</p>
@@ -74,7 +74,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Account Info */}
-        <Card className="border-gray-200 shadow-sm rounded-2xl bg-white">
+        <div className="border border-gray-100 rounded-xl bg-white overflow-hidden">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <User size={20} className="text-amber-500" />
@@ -111,10 +111,10 @@ export default function SettingsPage() {
               </p>
             </div>
           </CardContent>
-        </Card>
+        </div>
 
         {/* Change Password */}
-        <Card className="border-gray-200 shadow-sm rounded-2xl bg-white">
+        <div className="border border-gray-100 rounded-xl bg-white overflow-hidden">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Key size={20} className="text-amber-500" />
@@ -167,10 +167,11 @@ export default function SettingsPage() {
             </form>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* Security note */}
-      <Card className="border-amber-200 bg-amber-50 shadow-sm rounded-2xl">
+      <div className="border border-amber-200 bg-amber-50 rounded-xl">
         <CardContent className="p-5 flex items-start gap-3">
           <AlertTriangle size={20} className="text-amber-600 mt-0.5 shrink-0" />
           <div>
@@ -181,10 +182,10 @@ export default function SettingsPage() {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </div>
 
       {/* API config reference */}
-      <Card className="border-gray-200 shadow-sm rounded-2xl bg-white">
+      <div className="border border-gray-100 rounded-xl bg-white overflow-hidden">
         <CardHeader>
           <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Shield size={20} className="text-amber-500" />
@@ -203,7 +204,7 @@ export default function SettingsPage() {
             <Badge variant="outline" className="font-semibold">Supabase JWT</Badge>
           </div>
         </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

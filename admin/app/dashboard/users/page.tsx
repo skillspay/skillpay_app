@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, Filter, GripHorizontal, Plus, MoreVertical, ChevronDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function UsersControl() {
   const router = useRouter();
@@ -49,44 +49,75 @@ export default function UsersControl() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ACTIVE':
-        return <Badge className="bg-green-100 text-green-800 border-none font-semibold">Active</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-green-400 text-[10px] font-bold text-green-600 uppercase">Active</span>;
       case 'SUSPENDED':
-        return <Badge className="bg-amber-100 text-amber-800 border-none font-semibold">Suspended</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-amber-400 text-[10px] font-bold text-amber-600 uppercase">Suspended</span>;
       case 'BANNED':
-        return <Badge className="bg-red-100 text-red-800 border-none font-semibold">Banned</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-red-400 text-[10px] font-bold text-red-600 uppercase">Banned</span>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800 border-none font-semibold">{status}</Badge>;
+        return <span className="px-2 py-0.5 rounded border border-gray-300 text-[10px] font-bold text-gray-500 uppercase">{status}</span>;
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Users Control Center</h1>
-        <p className="text-gray-500 mt-1">Manage user roles, statuses, and login permissions.</p>
+    <div className="flex flex-col h-full bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+      {/* Tabs Header */}
+      <div className="flex items-center gap-6 px-6 border-b border-gray-200">
+        <h2 className="text-lg font-bold text-gray-900 py-4 mr-4">Users List</h2>
+        
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={() => { setRoleFilter('ALL'); setPage(1); }}
+            className={`py-4 text-[13px] font-semibold border-b-2 transition-colors ${roleFilter === 'ALL' ? 'border-amber-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            All Users
+          </button>
+          <button 
+            onClick={() => { setRoleFilter('HOMEOWNER'); setPage(1); }}
+            className={`py-4 text-[13px] font-semibold border-b-2 transition-colors ${roleFilter === 'HOMEOWNER' ? 'border-amber-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Homeowners
+          </button>
+          <button 
+            onClick={() => { setRoleFilter('ARTISAN'); setPage(1); }}
+            className={`py-4 text-[13px] font-semibold border-b-2 transition-colors ${roleFilter === 'ARTISAN' ? 'border-amber-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Artisans
+          </button>
+          <button 
+            onClick={() => { setRoleFilter('ADMIN'); setPage(1); }}
+            className={`py-4 text-[13px] font-semibold border-b-2 transition-colors ${roleFilter === 'ADMIN' ? 'border-amber-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Admins
+          </button>
+        </div>
       </div>
 
-      <Card className="border-gray-200 shadow-sm rounded-2xl bg-white">
-        <CardHeader className="pb-2">
-          <Tabs
-            defaultValue="ALL"
-            onValueChange={(val) => {
-              setRoleFilter(val);
-              setPage(1);
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-bold text-gray-900">User List</CardTitle>
-              <TabsList className="bg-gray-100 p-1 rounded-xl">
-                <TabsTrigger value="ALL" className="rounded-lg text-sm px-3 py-1.5 font-medium">All Users</TabsTrigger>
-                <TabsTrigger value="HOMEOWNER" className="rounded-lg text-sm px-3 py-1.5 font-medium">Homeowners</TabsTrigger>
-                <TabsTrigger value="ARTISAN" className="rounded-lg text-sm px-3 py-1.5 font-medium">Artisans</TabsTrigger>
-                <TabsTrigger value="ADMIN" className="rounded-lg text-sm px-3 py-1.5 font-medium">Admins</TabsTrigger>
-              </TabsList>
-            </div>
-          </Tabs>
-        </CardHeader>
-        <CardContent>
+      {/* Table Control Bar */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <Search size={16} />
+            <span className="text-[13px] font-medium">Search</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <Filter size={16} />
+            <span className="text-[13px] font-medium">Filters</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer">
+            <GripHorizontal size={16} />
+            <span className="text-[13px] font-medium">Group by</span>
+          </div>
+        </div>
+        
+        <button className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded shadow-sm transition-colors text-[13px] font-semibold">
+          <Plus size={16} />
+          Add User
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-0 overflow-auto">
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="w-8 h-8 rounded-full border-4 border-amber-400 border-t-transparent animate-spin"></div>
@@ -97,104 +128,113 @@ export default function UsersControl() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="border border-gray-100 rounded-xl overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-gray-50">
-                    <TableRow>
-                      <TableHead className="font-bold text-gray-700">Email / ID</TableHead>
-                      <TableHead className="font-bold text-gray-700">Full Name</TableHead>
-                      <TableHead className="font-bold text-gray-700">Role</TableHead>
-                      <TableHead className="font-bold text-gray-700">Status</TableHead>
-                      <TableHead className="font-bold text-gray-700 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((u) => (
-                      <TableRow 
-                        key={u.id} 
-                        className="hover:bg-gray-50/50 cursor-pointer"
-                        onClick={() => router.push(`/dashboard/users/${u.id}`)}
-                      >
-                        <TableCell>
-                          <div className="font-medium text-gray-900">{u.email}</div>
-                          <div className="text-[10px] text-gray-400 font-mono mt-0.5">{u.id}</div>
-                        </TableCell>
-                        <TableCell className="font-medium text-gray-700 flex items-center gap-2">
+            <div className="w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b border-gray-100">
+                    <TableHead className="w-12 px-6"><Checkbox className="border-gray-300 rounded-sm" /></TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Email / ID <ChevronDown size={12} className="inline ml-1" /></TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Full Name</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Role</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10">Status</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider h-10 text-right pr-6">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u) => (
+                    <TableRow 
+                      key={u.id} 
+                      className="hover:bg-gray-50 border-b border-gray-50 cursor-pointer"
+                      onClick={() => router.push(`/dashboard/users/${u.id}`)}
+                    >
+                      <TableCell className="px-6" onClick={(e) => e.stopPropagation()}><Checkbox className="border-gray-300 rounded-sm" /></TableCell>
+                      <TableCell>
+                        <div className="text-[13px] font-medium text-gray-900">{u.email}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">{u.id}</div>
+                      </TableCell>
+                      <TableCell className="text-[13px] font-medium text-gray-700">
+                        <div className="flex items-center gap-2">
                           {u.role === 'HOMEOWNER' ? u.homeowner?.fullName : u.artisan?.fullName || 'N/A'}
                           {u.isVerified && (
-                            <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="font-semibold">{u.role}</Badge>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(u.status)}</TableCell>
-                        <TableCell className="text-right space-x-2">
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[12px] text-gray-600">{u.role}</span>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(u.status)}</TableCell>
+                      <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-3">
+                          {/* Simplified actions for tabular view */}
                           {u.status === 'ACTIVE' ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-amber-600 border-amber-200 hover:bg-amber-50 rounded-lg"
-                                onClick={() => handleAction(u.id, 'suspend')}
-                              >
-                                Suspend
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 border-red-200 hover:bg-red-50 rounded-lg"
-                                onClick={() => handleAction(u.id, 'ban')}
-                              >
-                                Ban
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 text-white rounded-lg"
-                              onClick={() => handleAction(u.id, 'activate')}
+                            <button 
+                              className="w-8 h-4 rounded-full bg-amber-500 flex items-center p-0.5 justify-end"
+                              onClick={() => handleAction(u.id, 'suspend')}
+                              title="Suspend user"
                             >
-                              Activate
-                            </Button>
+                              <div className="w-3 h-3 bg-white rounded-full"></div>
+                            </button>
+                          ) : (
+                            <button 
+                              className="w-8 h-4 rounded-full bg-gray-200 flex items-center p-0.5"
+                              onClick={() => handleAction(u.id, 'activate')}
+                              title="Activate user"
+                            >
+                              <div className="w-3 h-3 bg-white rounded-full"></div>
+                            </button>
                           )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                          <button className="text-gray-400 hover:text-gray-600">
+                            <MoreVertical size={16} />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-              {/* Pagination controls */}
-              <div className="flex justify-between items-center pt-2">
-                <p className="text-sm text-gray-500 font-medium">Page {page} of {totalPages}</p>
-                <div className="space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-lg"
-                    disabled={page <= 1}
-                    onClick={() => setPage(page - 1)}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-lg"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage(page + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
+            {/* Pagination controls */}
+            <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100">
+              <p className="text-[13px] text-gray-500">Showing <span className="font-medium text-gray-900">{users.length}</span> of 50</p>
+              
+              <div className="flex items-center gap-1">
+                <button 
+                  className="w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const p = i + 1;
+                  return (
+                    <button 
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-8 h-8 flex items-center justify-center rounded text-[13px] font-medium transition-colors ${
+                        page === p ? 'bg-amber-500 text-white' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+                <button 
+                  className="w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  &gt;
+                </button>
               </div>
             </div>
+            </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

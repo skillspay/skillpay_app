@@ -134,35 +134,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-[260px] bg-white text-gray-700 shrink-0 border-r border-gray-200 z-20">
         {/* Profile Header */}
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between cursor-pointer group">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between cursor-pointer group">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-black text-white flex items-center justify-center font-bold text-lg shadow-sm">
-              <span className="italic pr-0.5">S</span>
+            <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              <span>S</span>
             </div>
             <div className="flex flex-col">
               <h1 className="font-bold text-sm tracking-tight text-gray-900 group-hover:text-amber-600 transition-colors">
-                {user?.email?.split('@')[0] || 'Skillpay Admin'}
+                helpdesk
               </h1>
-              <p className="text-[10px] text-gray-500 font-medium">skillspays.com</p>
+              <p className="text-[11px] text-gray-500 font-medium">skillspays.com</p>
             </div>
           </div>
           <ChevronRight size={16} className="text-gray-400 group-hover:text-amber-500 transition-colors" />
         </div>
         
-        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-6 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto py-5 px-3 space-y-5 scrollbar-hide">
           {navGroups.map(group => (
             <div key={group.title}>
-              <h3 className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <h3 className="px-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                 {group.title}
               </h3>
-              <nav className="space-y-1">
+              <nav className="space-y-0.5">
                 {group.items.map(item => {
                   const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
                   return (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-[13px] font-medium ${
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors text-[14px] font-medium ${
                         isActive
                           ? 'bg-amber-50 text-amber-600'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
