@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 
 const BOOKING_INCLUDE = {
   job: {
@@ -27,7 +28,10 @@ const BOOKING_INCLUDE = {
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   // ─── Create booking from application ─────────────────────────────────────
 
@@ -96,7 +100,7 @@ export class BookingsService {
       });
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.jobApplication.update({
         where: { id: app.id },
         data: { status: 'ACCEPTED' },
@@ -112,10 +116,30 @@ export class BookingsService {
           artisanId,
           homeownerId: homeowner.id,
           status: 'CONFIRMED',
+          payment: {
+            create: {
+              homeownerId: homeowner.id,
+              artisanId,
+              amount: Number(job.budget) * 0.7,
+              gateway: 'STRIPE',
+              paymentMethod: 'CARD',
+              status: 'COMPLETED',
+              reference: `pay_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+            }
+          }
         },
         include: BOOKING_INCLUDE,
       });
     });
+
+    // Send email to admin
+    this.mailService.sendNotificationEmail(
+      'admin@skillspays.com',
+      'New Job Hired & Payment Received',
+      `A new payment of $${(Number(job.budget) * 0.7).toFixed(2)} was successfully received for job "${job.title}". The booking ID is ${result.id}.`
+    ).catch(e => console.error('Failed to send admin email', e));
+
+    return result;
   }
 
   // ─── Artisan: active bookings ─────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReportStatus, VerificationStatus } from '@prisma/client';
 
@@ -98,6 +98,46 @@ export class AdminService {
   }
 
   // ─── Payments Overview ──────────────────────────────────────────────────────
+
+  async releaseFunds(bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { job: true, artisan: true },
+    });
+    if (!booking) throw new NotFoundException(`Booking ${bookingId} not found`);
+    if (booking.status !== 'COMPLETED') throw new BadRequestException('Booking is not COMPLETED');
+
+    // Create or find wallet
+    let wallet = await this.prisma.wallet.findUnique({
+      where: { userId: booking.artisan.userId },
+    });
+    if (!wallet) {
+      wallet = await this.prisma.wallet.create({
+        data: { userId: booking.artisan.userId, balance: 0 },
+      });
+    }
+
+    const amountToRelease = booking.job.budget;
+
+    return this.prisma.$transaction(async (tx) => {
+      // Create wallet transaction
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet!.id,
+          amount: amountToRelease,
+          type: 'CREDIT',
+          reference: `release_${booking.id}_${Date.now()}`,
+          description: `Funds released for job: ${booking.job.title}`,
+        },
+      });
+
+      // Update wallet balance
+      return tx.wallet.update({
+        where: { id: wallet!.id },
+        data: { balance: { increment: amountToRelease } },
+      });
+    });
+  }
 
   async getAllPayments() {
     return this.prisma.payment.findMany({

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/jobs_service.dart';
 import '../models/job_model.dart';
+import '../models/booking_model.dart';
+import '../services/bookings_service.dart';
 import 'job_details_screen.dart';
+import 'history_job_details_screen.dart';
 import 'submit_proposal_screen.dart';
 
 class JobsTab extends StatefulWidget {
@@ -13,7 +16,8 @@ class JobsTab extends StatefulWidget {
 
 class _JobsTabState extends State<JobsTab> {
   int _selectedTabIndex = 0;
-  List<JobModel> _jobs = [];
+  List<JobModel> _availableJobs = [];
+  List<BookingModel> _recentBookings = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -32,8 +36,16 @@ class _JobsTabState extends State<JobsTab> {
     });
 
     try {
-      final jobs = await _jobsService.fetchAvailableJobs();
-      if (mounted) setState(() => _jobs = jobs);
+      final available = await _jobsService.fetchAvailableJobs();
+      final bookings = await BookingsService().fetchMyBookings();
+      final history = await BookingsService().fetchMyHistory();
+      
+      if (mounted) {
+        setState(() {
+          _availableJobs = available;
+          _recentBookings = [...bookings, ...history];
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _errorMessage = e.toString());
     } finally {
@@ -113,24 +125,49 @@ class _JobsTabState extends State<JobsTab> {
                           ],
                         ),
                       )
-                    : _jobs.isEmpty
-                        ? const Center(
-                            child: Text('No jobs available at the moment.',
-                                style: TextStyle(color: Colors.grey)))
-                        : RefreshIndicator(
-                            onRefresh: _fetchJobs,
-                            child: ListView.separated(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24.0, vertical: 8.0),
-                              itemCount: _jobs.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 16),
-                              itemBuilder: (context, index) =>
-                                  _buildJobCard(context, _jobs[index]),
-                            ),
-                          ),
+                    : _selectedTabIndex == 0 
+                      ? _buildAvailableJobsList()
+                      : _buildRecentJobsList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAvailableJobsList() {
+    if (_availableJobs.isEmpty) {
+      return const Center(
+        child: Text('No jobs available at the moment.',
+            style: TextStyle(color: Colors.grey)));
+    }
+    return RefreshIndicator(
+      onRefresh: _fetchJobs,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 24.0, vertical: 8.0),
+        itemCount: _availableJobs.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 16),
+        itemBuilder: (context, index) =>
+            _buildJobCard(context, _availableJobs[index]),
+      ),
+    );
+  }
+
+  Widget _buildRecentJobsList() {
+    if (_recentBookings.isEmpty) {
+      return const Center(
+        child: Text('No recent jobs available.',
+            style: TextStyle(color: Colors.grey)));
+    }
+    return RefreshIndicator(
+      onRefresh: _fetchJobs,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 24.0, vertical: 8.0),
+        itemCount: _recentBookings.length,
+        separatorBuilder: (_, __) => const Divider(color: Color(0xFFEEEEEE), height: 1),
+        itemBuilder: (context, index) =>
+            _buildBookingItem(context, _recentBookings[index]),
       ),
     );
   }
@@ -300,5 +337,114 @@ class _JobsTabState extends State<JobsTab> {
     if (diff.inHours == 1) return '1 hour ago';
     if (diff.inMinutes > 1) return '${diff.inMinutes} minutes ago';
     return 'Just now';
+  }
+
+  Widget _buildBookingItem(BuildContext context, BookingModel booking) {
+    Color statusColor;
+    Color statusBgColor;
+    switch (booking.status.toUpperCase()) {
+      case 'PENDING':
+      case 'CONFIRMED':
+        statusColor = Colors.orange;
+        statusBgColor = Colors.orange.withOpacity(0.1);
+        break;
+      case 'IN_PROGRESS':
+        statusColor = Colors.blue;
+        statusBgColor = Colors.blue.withOpacity(0.1);
+        break;
+      case 'COMPLETED':
+        statusColor = Colors.green;
+        statusBgColor = Colors.green.withOpacity(0.1);
+        break;
+      case 'CANCELLED':
+        statusColor = Colors.red;
+        statusBgColor = Colors.red.withOpacity(0.1);
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusBgColor = Colors.grey.withOpacity(0.1);
+    }
+
+    return InkWell(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HistoryJobDetailsScreen(
+              booking: booking,
+              statusColor: statusColor,
+            ),
+          ),
+        );
+        if (result == true) {
+          _fetchJobs();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.work_outline,
+                color: Colors.black54,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    booking.jobTitle ?? 'Job ${booking.id.substring(0, 8)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          booking.homeownerName ?? 'Client',
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Text(
+                        booking.amount != null ? '\$${booking.amount!.toStringAsFixed(0)}' : 'N/A',
+                        style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusBgColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                booking.status.toUpperCase(),
+                style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

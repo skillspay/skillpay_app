@@ -3,6 +3,7 @@ import 'history_chat_screen.dart';
 import 'update_job_screen.dart';
 
 import '../models/booking_model.dart';
+import '../services/bookings_service.dart';
 
 class HistoryJobDetailsScreen extends StatelessWidget {
   final BookingModel booking;
@@ -131,9 +132,19 @@ class HistoryJobDetailsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: TextButton(
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.pop(context); // Close modal
-                      // Normally this would update state, but we mock for now
+                      try {
+                        await BookingsService().completeJob(booking.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Job marked as completed!')));
+                          Navigator.pop(context, true);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to complete job: $e')));
+                        }
+                      }
                     },
                     child: const Text(
                       'Confirm',
@@ -238,24 +249,15 @@ class HistoryJobDetailsScreen extends StatelessWidget {
               
               const SizedBox(height: 24),
               
-              // Tabs inside details (Jobs Details / Track Progress)
-              Row(
+              // Tabs inside details (Jobs Details)
+              const Row(
                 children: [
-                  const Text(
+                  Text(
                     'Jobs Details',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    'Track Progress',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[400],
                     ),
                   ),
                 ],
@@ -312,45 +314,20 @@ class HistoryJobDetailsScreen extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: booking.status == 'COMPLETED' ? null : () => _showCompletionModal(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1B1B1B),
-                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFFFFC107),
+                        foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Complete'),
+                      child: const Text('Complete', style: TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
               ),
               
-              const SizedBox(height: 16),
-              
-              // Action Button Row 2 (Update Job)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: booking.status == 'COMPLETED' ? null : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const UpdateJobScreen()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[200],
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 0,
-                    disabledBackgroundColor: Colors.grey[300],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Update Job', style: TextStyle(fontWeight: FontWeight.w600)),
-                ),
-              ),
               const SizedBox(height: 24),
             ],
           ),

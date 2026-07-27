@@ -18,6 +18,18 @@ class BookingsService {
     }
   }
 
+  Future<List<BookingModel>> fetchMyHistory() async {
+    try {
+      final data = await _api.get('/bookings/my-history') as List<dynamic>;
+      return data
+          .map((json) => BookingModel.fromMap(json as Map<String, dynamic>))
+          .toList();
+    } on ApiException catch (e) {
+      debugPrint('Error fetching booking history: ${e.message}');
+      return [];
+    }
+  }
+
   /// Fetch a single booking by ID.
   Future<BookingModel?> fetchBooking(String id) async {
     try {

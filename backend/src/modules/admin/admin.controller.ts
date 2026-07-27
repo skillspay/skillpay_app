@@ -76,6 +76,17 @@ export class AdminController {
     return this.adminService.getAllBookings();
   }
 
+  @Post('bookings/:id/release-funds')
+  @ApiOperation({ summary: 'Release funds to worker for a completed booking' })
+  async releaseFunds(
+    @CurrentUser() admin: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    const result = await this.adminService.releaseFunds(id);
+    await this.adminService.logAction(admin.id, 'Funds RELEASED', 'bookings', id, { amount: result.balance });
+    return { success: true, newBalance: result.balance };
+  }
+
   // ─── Payments Overview ─────────────────────────────────────────────────────
 
   @Get('payments')
