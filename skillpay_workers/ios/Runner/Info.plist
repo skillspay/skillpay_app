@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Skillpay Workers needs access to your photo library to allow you to upload a profile picture and share images of your work.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>This app requires Face ID to secure your wallet and account details.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

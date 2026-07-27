@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -60,6 +61,19 @@ export class ApplicationsService {
       include: { homeowner: true },
     });
     if (!job) throw new NotFoundException(`Job ${jobId} not found`);
+
+    const existingApplication = await this.prisma.jobApplication.findUnique({
+      where: {
+        jobId_artisanId: {
+          jobId,
+          artisanId: artisan.id,
+        },
+      },
+    });
+
+    if (existingApplication) {
+      throw new ConflictException('You have already submitted a proposal for this job.');
+    }
 
     const application = await this.prisma.jobApplication.create({
       data: {

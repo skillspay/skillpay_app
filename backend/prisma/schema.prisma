@@ -147,6 +147,8 @@ model User {
   adminLogs            AdminLog[]
   addresses            Address[]
 
+  @@index([role])
+  @@index([status])
   @@map("users")
 }
 
@@ -209,6 +211,8 @@ model Artisan {
   payments              Payment[]
   posts                 ArtisanPost[]
 
+  @@index([verificationStatus])
+  @@index([availabilityStatus])
   @@map("artisans")
 }
 
@@ -305,6 +309,9 @@ model Job {
   booking      Booking?
   conversation Conversation?
 
+  @@index([status])
+  @@index([categoryId])
+  @@index([homeownerId])
   @@map("jobs")
 }
 
@@ -326,6 +333,9 @@ model JobApplication {
   artisan Artisan @relation(fields: [artisanId], references: [id], onDelete: Cascade)
   booking Booking?
 
+  @@index([jobId])
+  @@index([artisanId])
+  @@index([status])
   @@unique([jobId, artisanId])
   @@map("job_applications")
 }
@@ -352,6 +362,9 @@ model Booking {
   review      Review?
   reports     Report[]
 
+  @@index([status])
+  @@index([artisanId])
+  @@index([homeownerId])
   @@map("bookings")
 }
 
@@ -383,6 +396,8 @@ model Message {
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
 
+  @@index([conversationId])
+  @@index([createdAt])
   @@map("messages")
 }
 
@@ -474,6 +489,8 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([read])
   @@map("notifications")
 }
 
