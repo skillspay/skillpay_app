@@ -221,6 +221,7 @@ export class BookingsService {
         application: true,
         job: true,
         artisan: true,
+        homeowner: true,
       },
     });
     if (!booking) throw new NotFoundException(`Booking ${id} not found`);
@@ -233,6 +234,7 @@ export class BookingsService {
 
       // Notify customer (via email or other notification means)
       try {
+        // @ts-ignore
         const homeownerUser = await this.prisma.user.findUnique({ where: { id: booking.homeowner.userId } });
         if (homeownerUser && homeownerUser.email) {
           await this.mailService.sendNotificationEmail(

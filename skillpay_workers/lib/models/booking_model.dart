@@ -45,7 +45,18 @@ class BookingModel {
     final homeownerObj = map['homeowner'] as Map<String, dynamic>?;
     final applicationObj = map['application'] as Map<String, dynamic>?;
 
-    return BookingModel(
+    double? parsedAmount = double.tryParse(applicationObj?['price']?.toString() ?? '');
+    if (parsedAmount == null || parsedAmount == 0) {
+      parsedAmount = double.tryParse(jobObj?['budget']?.toString() ?? '');
+    }
+    if (parsedAmount == null || parsedAmount == 0) {
+      parsedAmount = double.tryParse(map['amount']?.toString() ?? '');
+    }
+    if (parsedAmount == null || parsedAmount == 0) {
+      parsedAmount = double.tryParse(map['price']?.toString() ?? '');
+    }
+
+    final booking = BookingModel(
       id: map['id']?.toString() ?? '',
       jobId: map['jobId']?.toString() ?? map['job_id']?.toString() ?? '',
       artisanId: map['artisanId']?.toString() ?? map['artisan_id']?.toString() ?? '',
@@ -66,10 +77,12 @@ class BookingModel {
       jobTimeline: jobObj?['timeline']?.toString(),
       jobPreferredDate: jobObj?['preferredDate']?.toString(),
       jobCategoryName: jobObj?['category']?['name']?.toString(),
-      amount: double.tryParse(applicationObj?['price']?.toString() ?? '') ?? double.tryParse(jobObj?['budget']?.toString() ?? '') ?? double.tryParse(map['amount']?.toString() ?? '') ?? double.tryParse(map['price']?.toString() ?? ''),
+      amount: parsedAmount ?? 0.0,
       homeownerName: homeownerObj?['fullName']?.toString() ?? homeownerObj?['full_name']?.toString(),
       homeownerPhoto: homeownerObj?['profilePhoto']?.toString(),
     );
+    print('DEBUG BOOKING MODEL parsed amount: ${booking.amount}, appPrice: ${applicationObj?['price']}, jobBudget: ${jobObj?['budget']}, mapAmount: ${map['amount']}');
+    return booking;
   }
 
   bool get isConfirmed => status.toUpperCase() == 'CONFIRMED';
