@@ -80,6 +80,19 @@ export class StorageController {
     );
   }
 
+  // Admin: POST /storage/category-image
+  @Post('category-image')
+  @ApiOperation({ summary: 'Upload category image' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadCategoryImage(@UploadedFile() file: Express.Multer.File) {
+    return this.upload(
+      file,
+      this.config.get<string>('storage.bucketCategories', 'categories'),
+      'categories',
+    );
+  }
+
   // ─── Helper ──────────────────────────────────────────────────────────────
 
   private async upload(

@@ -107,13 +107,31 @@ export default function CategoriesControl() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-semibold text-gray-700">Image URL</label>
-                <Input
-                  placeholder="https://example.com/image.png"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                  className="h-11 rounded-xl focus:border-amber-400 focus:ring-amber-400 border-gray-300"
-                />
+                <label className="text-sm font-semibold text-gray-700">Image (Upload or URL)</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://example.com/image.png"
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                    className="h-11 rounded-xl focus:border-amber-400 focus:ring-amber-400 border-gray-300 flex-1"
+                  />
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        try {
+                          const res = await api.storage.uploadCategory(e.target.files[0]);
+                          if (res?.url) setImage(res.url);
+                        } catch (err) {
+                          console.error('Failed to upload image', err);
+                          alert('Failed to upload image. Does the "categories" bucket exist in Supabase?');
+                        }
+                      }
+                    }}
+                    className="w-[110px] text-xs pt-3 h-11 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 rounded-xl border-gray-300"
+                  />
+                </div>
               </div>
               <DialogFooter className="pt-4">
                 <Button

@@ -51,6 +51,16 @@ export const api = {
     syncUser: () => request('/auth/login', { method: 'POST' }),
     getProfile: () => request('/auth/me'),
   },
+  storage: {
+    uploadCategory: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return request('/storage/category-image', {
+        method: 'POST',
+        body: formData,
+      });
+    }
+  },
   users: {
     list: (page = 1, limit = 10, role?: string, status?: string) => {
       let query = `?page=${page}&limit=${limit}`;
