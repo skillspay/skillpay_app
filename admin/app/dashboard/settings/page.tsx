@@ -100,14 +100,14 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Account Info */}
-        <Card className="border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm">
-          <CardHeader>
+        <Card className="p-6 border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm">
+          <CardHeader className="px-0 pt-0 pb-4">
             <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <User size={20} className="text-amber-500" />
               Account Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="px-0 pb-0 space-y-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email</label>
               <p className="text-gray-900 font-semibold">{profile?.email || '—'}</p>
@@ -140,14 +140,14 @@ export default function SettingsPage() {
         </Card>
 
         {/* Change Password */}
-        <Card className="border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm">
-          <CardHeader>
+        <Card className="p-6 border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm">
+          <CardHeader className="px-0 pt-0 pb-4">
             <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Key size={20} className="text-amber-500" />
               Change Password
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 pb-0">
             <form onSubmit={handlePasswordChange} className="space-y-4">
               {pwResult && (
                 <div
@@ -196,14 +196,14 @@ export default function SettingsPage() {
       </div>
 
       {/* Platform Settings */}
-      <Card className="border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm mt-8">
-        <CardHeader>
+      <Card className="p-6 border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm mt-8">
+        <CardHeader className="px-0 pt-0 pb-4">
           <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Shield size={20} className="text-amber-500" />
             Platform Settings
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0 pb-0">
           <form onSubmit={handleCommissionChange} className="max-w-md space-y-4">
             {comResult && (
               <div
@@ -257,14 +257,14 @@ export default function SettingsPage() {
       </div>
 
       {/* API config reference */}
-      <div className="border border-gray-100 rounded-xl bg-white overflow-hidden">
-        <CardHeader>
+      <Card className="p-6 border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm mt-8">
+        <CardHeader className="px-0 pt-0 pb-4">
           <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Shield size={20} className="text-amber-500" />
             API Configuration
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="px-0 pb-0 space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-600">API Base URL</span>
             <code className="text-xs bg-gray-100 px-2 py-1 rounded-lg font-mono text-gray-700">
