@@ -44,6 +44,16 @@ export class BookingsController {
     return this.bookingsService.create(user.id, body.applicationId);
   }
 
+  // Create booking directly without an application
+  @Post('direct')
+  @ApiOperation({ summary: 'Create booking directly from job and artisan (homeowner)' })
+  createDirect(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { jobId: string; artisanId: string },
+  ) {
+    return this.bookingsService.createDirect(user.id, body.jobId, body.artisanId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get booking by ID' })
   findOne(@Param('id') id: string) {

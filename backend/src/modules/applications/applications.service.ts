@@ -4,6 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const APPLICATION_INCLUDE = {
   artisan: {
@@ -33,7 +34,10 @@ const APPLICATION_INCLUDE = {
 
 @Injectable()
 export class ApplicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   // ─── Submit application (artisan) ─────────────────────────────────────────
 
@@ -51,10 +55,13 @@ export class ApplicationsService {
       throw new ForbiddenException('Only verified artisans can submit proposals');
     }
 
-    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+      include: { homeowner: true },
+    });
     if (!job) throw new NotFoundException(`Job ${jobId} not found`);
 
-    return this.prisma.jobApplication.create({
+    const application = await this.prisma.jobApplication.create({
       data: {
         jobId,
         artisanId: artisan.id,
@@ -65,6 +72,18 @@ export class ApplicationsService {
       },
       include: APPLICATION_INCLUDE,
     });
+
+    if (job.homeowner) {
+      await this.notificationsService.createNotification(
+        job.homeowner.userId,
+        'New Proposal Received',
+        `${artisan.fullName} has sent a proposal for your job "${job.title}".`,
+        'APPLICATION',
+        { jobId: job.id, applicationId: application.id }
+      );
+    }
+
+    return application;
   }
 
   // ─── List for homeowner's jobs ─────────────────────────────────────────────
@@ -156,13 +175,13 @@ export class ApplicationsService {
 
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: applicationId },
-      include: { job: true },
+      include: { job: true, artisan: true },
     });
     if (!app) throw new NotFoundException(`Application ${applicationId} not found`);
     if (app.job.homeownerId !== homeowner.id)
       throw new ForbiddenException('Not your job');
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.jobApplication.update({
         where: { id: applicationId },
         data: { status: 'ACCEPTED' },
@@ -187,6 +206,18 @@ export class ApplicationsService {
 
       return updated;
     });
+
+    if (app.artisan) {
+      await this.notificationsService.createNotification(
+        app.artisan.userId,
+        'You were Hired!',
+        `Your proposal for "${app.job.title}" has been accepted.`,
+        'BOOKING',
+        { jobId: app.jobId, applicationId: app.id }
+      );
+    }
+
+    return result;
   }
 
   // ─── Reject ───────────────────────────────────────────────────────────────

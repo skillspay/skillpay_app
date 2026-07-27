@@ -67,6 +67,57 @@ export class BookingsService {
     });
   }
 
+  // ─── Create booking directly (no application) ─────────────────────────────
+
+  async createDirect(homeownerUserId: string, jobId: string, artisanId: string) {
+    const homeowner = await this.prisma.homeowner.findUnique({
+      where: { userId: homeownerUserId },
+    });
+    if (!homeowner) throw new NotFoundException('Homeowner profile not found');
+
+    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    if (!job || job.homeownerId !== homeowner.id) throw new NotFoundException('Job not found');
+
+    // Check if application exists
+    let app = await this.prisma.jobApplication.findFirst({
+      where: { jobId, artisanId },
+    });
+
+    if (!app) {
+      // Create synthetic application
+      app = await this.prisma.jobApplication.create({
+        data: {
+          jobId,
+          artisanId,
+          price: job.budget,
+          proposal: 'Direct hire',
+          status: 'ACCEPTED',
+        }
+      });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.jobApplication.update({
+        where: { id: app.id },
+        data: { status: 'ACCEPTED' },
+      });
+      await tx.job.update({
+        where: { id: jobId },
+        data: { status: 'ACCEPTED' },
+      });
+      return tx.booking.create({
+        data: {
+          jobId,
+          applicationId: app.id,
+          artisanId,
+          homeownerId: homeowner.id,
+          status: 'CONFIRMED',
+        },
+        include: BOOKING_INCLUDE,
+      });
+    });
+  }
+
   // ─── Artisan: active bookings ─────────────────────────────────────────────
 
   async findForArtisan(userId: string) {

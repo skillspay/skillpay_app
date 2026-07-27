@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApplicationStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   // ─── Get or create conversation ───────────────────────────────────────────
 
@@ -161,6 +165,46 @@ export class ChatService {
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
+
+    // Notify the other party
+    try {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        include: {
+          job: {
+            include: {
+              homeowner: { select: { userId: true } },
+              applications: {
+                where: { status: { in: ['ACCEPTED', 'PENDING'] } },
+                include: { artisan: { select: { userId: true } } },
+                take: 1,
+              },
+            },
+          },
+        },
+      });
+
+      if (conversation && conversation.job) {
+        const homeownerUserId = conversation.job.homeowner.userId;
+        const artisanUserId = conversation.job.applications[0]?.artisan?.userId;
+        
+        let receiverId: string | null | undefined = null;
+        if (senderId === homeownerUserId) receiverId = artisanUserId;
+        else if (senderId === artisanUserId) receiverId = homeownerUserId;
+        
+        if (receiverId) {
+          await this.notificationsService.createNotification(
+            receiverId,
+            'New Message',
+            `You received a new message: "${message.length > 30 ? message.substring(0, 30) + '...' : message}"`,
+            'GENERAL',
+            { conversationId, jobId: conversation.jobId }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Failed to send message notification:', error);
+    }
 
     return msg;
   }

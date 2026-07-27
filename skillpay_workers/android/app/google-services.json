@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "337553111898",
+    "project_id": "skillpay-36c4a",
+    "storage_bucket": "skillpay-36c4a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:337553111898:android:1526167c3a386b4d7fd163",
+        "android_client_info": {
+          "package_name": "com.avatec.skillpay"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDP3b6iv0L9R0LZxFi2crZlMiUrRp-WYM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:337553111898:android:2f5ec04e9a54d2877fd163",
+        "android_client_info": {
+          "package_name": "com.example.skillpay_workers"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDP3b6iv0L9R0LZxFi2crZlMiUrRp-WYM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
