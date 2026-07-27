@@ -100,7 +100,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Account Info */}
-        <div className="border border-gray-100 rounded-xl bg-white overflow-hidden">
+        <Card className="border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <User size={20} className="text-amber-500" />
@@ -137,10 +137,10 @@ export default function SettingsPage() {
               </p>
             </div>
           </CardContent>
-        </div>
+        </Card>
 
         {/* Change Password */}
-        <div className="border border-gray-100 rounded-xl bg-white overflow-hidden">
+        <Card className="border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Key size={20} className="text-amber-500" />
@@ -192,11 +192,11 @@ export default function SettingsPage() {
               </Button>
             </form>
           </CardContent>
-        </div>
+        </Card>
       </div>
 
       {/* Platform Settings */}
-      <div className="border border-gray-100 rounded-xl bg-white overflow-hidden mt-8">
+      <Card className="border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm mt-8">
         <CardHeader>
           <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Shield size={20} className="text-amber-500" />
@@ -276,7 +276,7 @@ export default function SettingsPage() {
             <Badge variant="outline" className="font-semibold">Supabase JWT</Badge>
           </div>
         </CardContent>
-      </div>
+      </Card>
     </div>
   );
 }
