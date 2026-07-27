@@ -22,6 +22,10 @@ import {
   Settings,
   Search,
   Moon,
+  ChevronRight,
+  ChevronDown,
+  Plus,
+  ChevronLeft,
 } from 'lucide-react';
 
 const navGroups = [
@@ -128,18 +132,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="h-screen w-full flex bg-gray-50 overflow-hidden font-sans">
       {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex flex-col w-[260px] bg-slate-900 text-white shrink-0 shadow-xl border-r border-slate-800 z-20">
-        <div className="h-16 flex items-center px-6 bg-slate-950 gap-3 border-b border-slate-800">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <img src="/logo.png" alt="Skillpay Logo" className="w-full h-full object-contain" />
+      <aside className="hidden md:flex flex-col w-[260px] bg-white text-gray-700 shrink-0 border-r border-gray-200 z-20">
+        {/* Profile Header */}
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between cursor-pointer group">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-black text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              <span className="italic pr-0.5">S</span>
+            </div>
+            <div className="flex flex-col">
+              <h1 className="font-bold text-sm tracking-tight text-gray-900 group-hover:text-amber-600 transition-colors">
+                {user?.email?.split('@')[0] || 'Skillpay Admin'}
+              </h1>
+              <p className="text-[10px] text-gray-500 font-medium">skillspays.com</p>
+            </div>
           </div>
-          <span className="font-bold text-lg tracking-wide text-white">Skillpay</span>
+          <ChevronRight size={16} className="text-gray-400 group-hover:text-amber-500 transition-colors" />
         </div>
         
-        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-6 scrollbar-hide">
           {navGroups.map(group => (
             <div key={group.title}>
-              <h3 className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">
+              <h3 className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                 {group.title}
               </h3>
               <nav className="space-y-1">
@@ -149,14 +162,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors text-sm ${
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-[13px] font-medium ${
                         isActive
-                          ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                          ? 'bg-amber-50 text-amber-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                     >
-                      <item.icon size={18} className={isActive ? 'text-slate-900' : ''} />
-                      <span>{item.name}</span>
+                      <div className="flex items-center gap-3">
+                        <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                        <span>{item.name}</span>
+                      </div>
+                      <ChevronRight size={14} className={isActive ? 'text-amber-500' : 'text-gray-400 opacity-0 group-hover:opacity-100'} />
                     </Link>
                   );
                 })}
@@ -169,58 +185,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content wrapper */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 z-10 shadow-sm">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-10">
           <div className="flex items-center gap-4">
+            <button className="hidden md:flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors shrink-0">
+              <ChevronLeft size={16} />
+            </button>
             <button onClick={() => setMobileMenuOpen(true)} className="md:hidden text-gray-500 hover:text-gray-700">
               <Menu size={24} />
             </button>
-            <h1 className="text-xl font-semibold text-gray-800 hidden md:block tracking-tight">
-              {getPageTitle()}
-            </h1>
-          </div>
-
-          <div className="flex-1 max-w-lg mx-6 hidden md:flex items-center relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3" />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              className="w-full bg-gray-50/50 border border-gray-200 rounded-lg pl-10 pr-12 py-2 text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all text-gray-700 placeholder:text-gray-400" 
-            />
-            <div className="absolute right-2 flex items-center justify-center border border-gray-200 rounded px-1.5 py-0.5 bg-white text-gray-400 text-[10px] font-mono shadow-sm">
-              ⌘K
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 md:gap-5 shrink-0">
-            <div className="hidden sm:flex items-center gap-2">
-              <button className="text-gray-400 hover:text-gray-700 w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                <Settings size={20} />
-              </button>
-              <button className="text-gray-400 hover:text-gray-700 w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors relative">
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-[1.5px] border-white"></span>
-              </button>
-              <button className="text-gray-400 hover:text-gray-700 w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                <Moon size={20} />
-              </button>
-            </div>
             
-            <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
+            <div className="flex items-center relative w-64 md:w-80">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3" />
+              <input 
+                type="text" 
+                placeholder="Search" 
+                className="w-full bg-white border-none focus:ring-0 pl-10 py-2 text-sm text-gray-700 placeholder:text-gray-400" 
+              />
+            </div>
+          </div>
 
-            {/* Profile Chip */}
+          <div className="flex items-center gap-5 shrink-0 pr-4">
+            <div className="hidden md:flex items-center gap-1 text-sm font-medium text-gray-600 cursor-pointer hover:text-gray-900">
+              EN <ChevronDown size={14} className="ml-0.5" />
+            </div>
+            <button className="text-gray-400 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 transition-colors">
+              <Plus size={16} />
+            </button>
+            <button className="text-gray-400 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded hover:bg-gray-50 transition-colors relative">
+              <Bell size={18} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full border-[1.5px] border-white"></span>
+            </button>
+
+            {/* Simple Avatar Chip */}
             <div 
-              className="flex items-center gap-3 bg-gray-50 py-1 px-1.5 md:pr-4 rounded-full border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group"
+              className="flex items-center cursor-pointer"
               onClick={handleLogout}
               title="Click to logout"
             >
-              <div className="w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center text-slate-950 font-bold text-sm shrink-0 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">
                 {user?.email?.charAt(0).toUpperCase() || 'A'}
-              </div>
-              <div className="hidden lg:flex flex-col items-start justify-center">
-                <span className="text-[13px] font-semibold text-gray-800 leading-tight group-hover:text-amber-600 transition-colors">
-                  {user?.email?.split('@')[0] || 'Admin User'}
-                </span>
-                <span className="text-[10px] text-gray-500 font-medium tracking-wide">Personal manager</span>
               </div>
             </div>
           </div>
@@ -236,18 +239,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex">
-          <div className="w-[260px] bg-slate-900 h-full flex flex-col shadow-2xl">
-            <div className="h-16 flex items-center justify-between px-6 bg-slate-950 border-b border-slate-800">
-              <span className="font-bold tracking-wide text-white">Skillpay Menu</span>
-              <button onClick={() => setMobileMenuOpen(false)} className="text-gray-400 hover:text-white">
+        <div className="md:hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex">
+          <div className="w-[260px] bg-white h-full flex flex-col shadow-2xl">
+            <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100">
+              <span className="font-bold tracking-wide text-gray-900">Menu</span>
+              <button onClick={() => setMobileMenuOpen(false)} className="text-gray-400 hover:text-gray-900">
                 <X size={24} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto py-6 px-4 space-y-6">
               {navGroups.map(group => (
                 <div key={group.title}>
-                  <h3 className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">
+                  <h3 className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
                     {group.title}
                   </h3>
                   <nav className="space-y-1">
@@ -258,24 +261,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           key={item.name}
                           href={item.href}
                           onClick={() => setMobileMenuOpen(false)}
-                          className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors text-sm ${
+                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-[13px] font-medium ${
                             isActive
-                              ? 'bg-amber-400 text-slate-950 font-semibold'
-                              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                              ? 'bg-amber-50 text-amber-600'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                           }`}
                         >
-                          <item.icon size={18} />
-                          <span>{item.name}</span>
+                          <div className="flex items-center gap-3">
+                            <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                            <span>{item.name}</span>
+                          </div>
                         </Link>
                       );
                     })}
                   </nav>
                 </div>
               ))}
-              <div className="pt-4 border-t border-slate-800 mt-6">
+              <div className="pt-4 border-t border-gray-100 mt-6">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center space-x-3 px-3 py-2.5 w-full text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-colors text-sm"
+                  className="flex items-center space-x-3 px-3 py-2.5 w-full text-red-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors text-[13px] font-medium"
                 >
                   <LogOut size={18} />
                   <span>Sign Out</span>
