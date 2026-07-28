@@ -297,12 +297,7 @@ export class BookingsService {
         const commissionPercent = await this.settingsService.getCommissionPercentage();
         const deduction = amount * (commissionPercent / 100);
         const payout = amount - deduction;
-        
-        await this.walletService.credit(
-          booking.artisan.userId, 
-          payout, 
-          `Payment for job ${booking.job?.title || id} (Admin commission: ${commissionPercent}%)`
-        );
+        // Wallet credit moved outside transaction to avoid deadlock
       }
 
       // Return the updated booking
@@ -311,6 +306,24 @@ export class BookingsService {
         include: BOOKING_INCLUDE,
       });
     });
+
+    const appPrice = booking.application?.price;
+    const amountStr = (appPrice && Number(appPrice) > 0) 
+      ? appPrice.toString() 
+      : booking.job?.budget?.toString();
+    const amount = parseFloat(amountStr || '0');
+
+    if (amount > 0) {
+      const commissionPercent = await this.settingsService.getCommissionPercentage();
+      const deduction = amount * (commissionPercent / 100);
+      const payout = amount - deduction;
+      
+      await this.walletService.credit(
+        booking.artisan.userId, 
+        payout, 
+        `Payment for job ${booking.job?.title || id} (Admin commission: ${commissionPercent}%)`
+      );
+    }
 
     // Notify Artisan outside transaction
     try {
