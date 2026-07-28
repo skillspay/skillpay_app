@@ -240,7 +240,7 @@ export default function SettingsPage() {
             </Button>
           </form>
         </CardContent>
-      </div>
+      </Card>
 
       {/* Security note */}
       <div className="border border-amber-200 bg-amber-50 rounded-xl">
