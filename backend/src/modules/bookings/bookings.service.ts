@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { WalletService } from '../wallet/wallet.service';
 import { SettingsService } from '../settings/settings.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const BOOKING_INCLUDE = {
   job: {
@@ -35,6 +36,7 @@ export class BookingsService {
     private readonly mailService: MailService,
     private readonly walletService: WalletService,
     private readonly settingsService: SettingsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ─── Create booking from application ─────────────────────────────────────
@@ -236,9 +238,9 @@ export class BookingsService {
       try {
         // @ts-ignore
         const homeownerUser = await this.prisma.user.findUnique({ where: { id: booking.homeowner.userId } });
-        if (homeownerUser && homeownerUser.email) {
-          await this.mailService.sendNotificationEmail(
-            homeownerUser.email,
+        if (homeownerUser) {
+          await this.notificationsService.createNotification(
+            homeownerUser.id,
             'Job Completed - Action Required',
             `Your job "${booking.job.title}" has been marked as completed by the artisan. Please log in to approve the job and release the final payment.`
           );
@@ -296,6 +298,20 @@ export class BookingsService {
           payout, 
           `Payment for job ${booking.job?.title || id} (Admin commission: ${commissionPercent}%)`
         );
+
+        // Notify Artisan
+        try {
+          const artisanUser = await this.prisma.user.findUnique({ where: { id: booking.artisan.userId } });
+          if (artisanUser) {
+            await this.notificationsService.createNotification(
+              artisanUser.id,
+              'Payment Received',
+              `You have been paid $${payout.toFixed(2)} for completing "${booking.job.title}".`
+            );
+          }
+        } catch (e) {
+          console.error('Failed to notify artisan of payment', e);
+        }
       }
 
       // Return the updated booking
