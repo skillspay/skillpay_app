@@ -108,7 +108,9 @@ class MessagesService {
 
   void subscribeToMessages({
     required String conversationId,
+    required String currentUserId,
     required void Function(MessageModel message) onMessage,
+    required void Function(bool isTyping) onTyping,
   }) {
     unsubscribe();
     _activeChannel = _supabase
@@ -131,7 +133,37 @@ class MessagesService {
             }
           },
         )
-        .subscribe();
+        .onPresenceSync((payload) {
+          final presenceState = _activeChannel?.presenceState();
+          if (presenceState != null) {
+            bool typing = false;
+            for (final key in presenceState.keys) {
+              final presences = presenceState[key]!;
+              for (final presence in presences) {
+                final payload = presence.payload;
+                if (payload['user_id'] != currentUserId && payload['typing'] == true) {
+                  typing = true;
+                }
+              }
+            }
+            onTyping(typing);
+          }
+        })
+        .subscribe((status, [error]) async {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            await _activeChannel?.track({'user_id': currentUserId, 'typing': false});
+          }
+        });
+  }
+
+  Future<void> updateTypingStatus(String currentUserId, bool isTyping) async {
+    if (_activeChannel != null) {
+      try {
+        await _activeChannel!.track({'user_id': currentUserId, 'typing': isTyping});
+      } catch (e) {
+        debugPrint('Error updating typing status: $e');
+      }
+    }
   }
 
   void unsubscribe() {

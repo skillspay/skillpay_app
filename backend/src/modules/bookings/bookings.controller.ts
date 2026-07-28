@@ -67,6 +67,7 @@ export class BookingsController {
     return this.bookingsService.start(id);
   }
 
+  // Flutter (workers): PATCH /bookings/:id/complete
   @Patch(':id/complete')
   @ApiOperation({ summary: 'Mark booking as completed' })
   complete(@Param('id') id: string) {

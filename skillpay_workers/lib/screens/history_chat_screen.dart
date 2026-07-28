@@ -33,26 +33,30 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
   String? _myUserId;
   File? _selectedFile;
   bool _isUploading = false;
+  bool _isOtherUserTyping = false;
+  Timer? _typingTimer;
 
   @override
   void initState() {
     super.initState();
     _messagesService.getMyPrismaUserId().then((id) {
-      if (mounted) setState(() => _myUserId = id);
+      if (mounted) {
+        setState(() => _myUserId = id);
+        if (!_isLoading) {
+          _setupRealtime();
+        }
+      }
     });
     _loadMessages();
   }
+
+
 
   Future<void> _loadMessages() async {
     try {
       final messages = await _messagesService.fetchMessages(widget.conversationId);
       if (mounted) {
         setState(() {
-          // fetchMessages usually returns latest first if ordered by createdAt DESC, 
-          // but we display them in a ListView which builds top to bottom.
-          // Depending on the backend ordering, we might need to reverse them. 
-          // Let's assume the backend returns oldest to newest. If reversed, we handle it later.
-          // Wait, chat usually shows newest at bottom. Let's reverse them and use ListView(reverse: true).
           _messages = messages.reversed.toList();
           _isLoading = false;
         });
@@ -70,17 +74,17 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
   }
 
   void _setupRealtime() {
+    if (_myUserId == null) return;
     _messagesService.subscribeToMessages(
       conversationId: widget.conversationId,
+      currentUserId: _myUserId!,
       onMessage: (message) {
         if (mounted) {
           if (_messages.any((m) => m.id == message.id)) return;
           
           setState(() {
-            // Insert at beginning since list is reversed
             _messages.insert(0, message);
           });
-          // Scroll to bottom (which is top for reversed list)
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
               0.0,
@@ -88,6 +92,11 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
               curve: Curves.easeOut,
             );
           }
+        }
+      },
+      onTyping: (isTyping) {
+        if (mounted) {
+          setState(() => _isOtherUserTyping = isTyping);
         }
       },
     );
@@ -151,10 +160,22 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
     _messagesService.unsubscribe();
     _msgController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onTypingChanged(String value) {
+    if (_myUserId == null) return;
+    
+    _messagesService.updateTypingStatus(_myUserId!, true);
+    
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(milliseconds: 1500), () {
+      _messagesService.updateTypingStatus(_myUserId!, false);
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -354,6 +375,18 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
                         ],
                       ),
                     ),
+                  if (_isOtherUserTyping)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, bottom: 8),
+                        child: Text(
+                          'Typing...',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
                   Row(
                     children: [
                       GestureDetector(
@@ -379,6 +412,7 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
                       child: TextField(
                         controller: _msgController,
                         textInputAction: TextInputAction.send,
+                        onChanged: _onTypingChanged,
                         onSubmitted: (_) => _sendMessage(),
                         decoration: const InputDecoration(
                           hintText: 'Type your message...',

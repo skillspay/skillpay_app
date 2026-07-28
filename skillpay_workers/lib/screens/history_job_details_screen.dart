@@ -239,7 +239,7 @@ class HistoryJobDetailsScreen extends StatelessWidget {
               // Financials Row
               Row(
                 children: [
-                  Expanded(child: _buildFinancialBox('Proposed Cost', '\$${booking.amount?.toStringAsFixed(2) ?? '0.00'}')),
+                  Expanded(child: _buildFinancialBox('Project Fee', '\$${booking.amount?.toStringAsFixed(2) ?? '0.00'}')),
                 ],
               ),
               

@@ -228,26 +228,11 @@ export class BookingsService {
     });
     if (!booking) throw new NotFoundException(`Booking ${id} not found`);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.job.update({
         where: { id: booking.jobId },
         data: { status: 'COMPLETED' },
       });
-
-      // Notify customer (via email or other notification means)
-      try {
-        // @ts-ignore
-        const homeownerUser = await this.prisma.user.findUnique({ where: { id: booking.homeowner.userId } });
-        if (homeownerUser) {
-          await this.notificationsService.createNotification(
-            homeownerUser.id,
-            'Job Completed - Action Required',
-            `Your job "${booking.job.title}" has been marked as completed by the artisan. Please log in to approve the job and release the final payment.`
-          );
-        }
-      } catch (e) {
-        console.error('Failed to send completion email to customer', e);
-      }
 
       return tx.booking.update({
         where: { id },
@@ -255,6 +240,22 @@ export class BookingsService {
         include: BOOKING_INCLUDE,
       });
     });
+
+    // Notify customer (via email or other notification means)
+    try {
+      const homeownerUser = await this.prisma.user.findUnique({ where: { id: booking.homeowner.userId } });
+      if (homeownerUser) {
+        await this.notificationsService.createNotification(
+          homeownerUser.id,
+          'Job Completed - Action Required',
+          `Your job "${booking.job.title}" has been marked as completed by the artisan. Please log in to approve the job and release the final payment.`
+        );
+      }
+    } catch (e) {
+      console.error('Failed to send completion email to customer', e);
+    }
+
+    return result;
   }
 
   // ─── Approve and Pay ──────────────────────────────────────────────────────
@@ -274,7 +275,7 @@ export class BookingsService {
     if (booking.homeowner.userId !== customerUserId) throw new BadRequestException('Not your booking');
     if (booking.status !== 'COMPLETED') throw new BadRequestException('Booking is not completed yet');
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // 1. Mark artisan completed jobs count increment (since it's now officially approved)
       await tx.artisan.update({
         where: { id: booking.artisanId },
@@ -298,20 +299,6 @@ export class BookingsService {
           payout, 
           `Payment for job ${booking.job?.title || id} (Admin commission: ${commissionPercent}%)`
         );
-
-        // Notify Artisan
-        try {
-          const artisanUser = await this.prisma.user.findUnique({ where: { id: booking.artisan.userId } });
-          if (artisanUser) {
-            await this.notificationsService.createNotification(
-              artisanUser.id,
-              'Payment Received',
-              `You have been paid $${payout.toFixed(2)} for completing "${booking.job.title}".`
-            );
-          }
-        } catch (e) {
-          console.error('Failed to notify artisan of payment', e);
-        }
       }
 
       // Return the updated booking
@@ -320,6 +307,30 @@ export class BookingsService {
         include: BOOKING_INCLUDE,
       });
     });
+
+    // Notify Artisan outside transaction
+    try {
+      const amountStr = booking.application?.price?.toString() || booking.job?.budget?.toString();
+      const amount = parseFloat(amountStr || '0');
+      
+      if (amount > 0) {
+        const commissionPercent = await this.settingsService.getCommissionPercentage();
+        const payout = amount - (amount * (commissionPercent / 100));
+        
+        const artisanUser = await this.prisma.user.findUnique({ where: { id: booking.artisan.userId } });
+        if (artisanUser) {
+          await this.notificationsService.createNotification(
+            artisanUser.id,
+            'Payment Received',
+            `You have been paid $${payout.toFixed(2)} for completing "${booking.job.title}".`
+          );
+        }
+      }
+    } catch (e) {
+      console.error('Failed to notify artisan of payment', e);
+    }
+
+    return result;
   }
 
   async approveAndPayByJob(jobId: string, customerUserId: string) {
