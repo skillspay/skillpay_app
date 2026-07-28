@@ -194,8 +194,8 @@ class _HistoryTabState extends State<HistoryTab> {
     }
 
     return InkWell(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => HistoryJobDetailsScreen(
@@ -204,6 +204,9 @@ class _HistoryTabState extends State<HistoryTab> {
             ),
           ),
         );
+        if (result == true) {
+          _fetchHistory();
+        }
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
