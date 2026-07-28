@@ -192,7 +192,7 @@ export class ChatService {
         if (senderId === homeownerUserId) receiverId = artisanUserId;
         else if (senderId === artisanUserId) receiverId = homeownerUserId;
         
-        if (receiverId) {
+        if (receiverId && receiverId !== senderId) {
           await this.notificationsService.createNotification(
             receiverId,
             'New Message',

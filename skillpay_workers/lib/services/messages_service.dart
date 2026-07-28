@@ -137,9 +137,8 @@ class MessagesService {
           final presenceState = _activeChannel?.presenceState();
           if (presenceState != null) {
             bool typing = false;
-            for (final key in presenceState.keys) {
-              final presences = presenceState[key]!;
-              for (final presence in presences) {
+            for (final state in presenceState) {
+              for (final presence in state.presences) {
                 final payload = presence.payload;
                 if (payload['user_id'] != currentUserId && payload['typing'] == true) {
                   typing = true;
