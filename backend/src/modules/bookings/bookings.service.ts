@@ -126,7 +126,7 @@ export class BookingsService {
             create: {
               homeownerId: homeowner.id,
               artisanId,
-              amount: Number(job.budget) * 0.7,
+              amount: app.price && Number(app.price) > 0 ? Number(app.price) : Number(job.budget),
               gateway: 'STRIPE',
               paymentMethod: 'CARD',
               status: 'COMPLETED',
@@ -139,10 +139,11 @@ export class BookingsService {
     });
 
     // Send email to admin
+    const paymentAmount = app.price && Number(app.price) > 0 ? Number(app.price) : Number(job.budget);
     this.mailService.sendNotificationEmail(
       'admin@skillspays.com',
       'New Job Hired & Payment Received',
-      `A new payment of $${(Number(job.budget) * 0.7).toFixed(2)} was successfully received for job "${job.title}". The booking ID is ${result.id}.`
+      `A new payment of $${paymentAmount.toFixed(2)} was successfully received for job "${job.title}". The booking ID is ${result.id}.`
     ).catch(e => console.error('Failed to send admin email', e));
 
     return result;
@@ -286,7 +287,10 @@ export class BookingsService {
       // TODO: Actual payment gateway integration would go here if charging a card.
 
       // 3. Calculate payout and credit worker's wallet
-      const amountStr = booking.application?.price?.toString() || booking.job?.budget?.toString();
+      const appPrice = booking.application?.price;
+      const amountStr = (appPrice && Number(appPrice) > 0) 
+        ? appPrice.toString() 
+        : booking.job?.budget?.toString();
       const amount = parseFloat(amountStr || '0');
 
       if (amount > 0) {
@@ -310,7 +314,10 @@ export class BookingsService {
 
     // Notify Artisan outside transaction
     try {
-      const amountStr = booking.application?.price?.toString() || booking.job?.budget?.toString();
+      const appPrice = booking.application?.price;
+      const amountStr = (appPrice && Number(appPrice) > 0) 
+        ? appPrice.toString() 
+        : booking.job?.budget?.toString();
       const amount = parseFloat(amountStr || '0');
       
       if (amount > 0) {
