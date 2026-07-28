@@ -21,6 +21,16 @@ export class ReviewsController {
     return this.reviewsService.create(user.id, body.bookingId, body.rating, body.review);
   }
 
+  @Post('by-job/:jobId')
+  @ApiOperation({ summary: 'Submit a review for a completed booking by jobId (Homeowner)' })
+  createByJob(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('jobId') jobId: string,
+    @Body() body: { rating: number; review?: string },
+  ) {
+    return this.reviewsService.createByJob(user.id, jobId, body.rating, body.review);
+  }
+
   @Get('artisan/:artisanId')
   @ApiOperation({ summary: 'Get all reviews for an artisan' })
   getForArtisan(@Param('artisanId') artisanId: string) {

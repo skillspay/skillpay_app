@@ -18,6 +18,7 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
   bool _isLoading = true;
   bool _isSubmitting = false;
   Map<String, dynamic>? _profileData;
+  final TextEditingController _priceController = TextEditingController();
 
   @override
   void initState() {
@@ -31,6 +32,8 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
       if (mounted) {
         setState(() {
           _profileData = profile;
+          final hourlyRate = profile?['hourlyRate']?.toString() ?? profile?['hourly_rate']?.toString() ?? '0';
+          _priceController.text = hourlyRate;
           _isLoading = false;
         });
       }
@@ -81,7 +84,6 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
     final name = _profileData?['fullName']?.toString() ?? _profileData?['full_name']?.toString() ?? 'Artisan Name';
     final categories = (_profileData?['categories'] as List<dynamic>?) ?? [];
     final experience = _profileData?['yearsExperience']?.toString() ?? _profileData?['years_experience']?.toString() ?? '0';
-    final hourlyRate = _profileData?['hourlyRate']?.toString() ?? _profileData?['hourly_rate']?.toString() ?? '0';
     final bio = _profileData?['bio']?.toString() ?? 'No cover letter or bio provided.';
     final completedJobs = _profileData?['completedJobs']?.toString() ?? '0';
     final rating = _profileData?['rating']?.toString() ?? '0.0';
@@ -162,7 +164,20 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
           // Specs
           _buildSpecRow('Experience', '$experience years +'),
           const SizedBox(height: 12),
-          _buildSpecRow('Starting rate', '\$$hourlyRate / hr', valueColor: Colors.green),
+          const SizedBox(height: 16),
+          const Text('Proposal Price', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _priceController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              prefixText: '\$ ',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              hintText: 'Enter your proposal price',
+            ),
+          ),
           
           const SizedBox(height: 24),
           
@@ -250,14 +265,14 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
                     
                     setState(() => _isSubmitting = true);
                     try {
-                      final hourlyRate = double.tryParse(_profileData?['hourlyRate']?.toString() ?? _profileData?['hourly_rate']?.toString() ?? '0') ?? 0.0;
+                      final parsedPrice = double.tryParse(_priceController.text) ?? 0.0;
                       final bio = _profileData?['bio']?.toString() ?? 'No cover letter provided.';
                       
                       // Using the applications service
                       final appService = ApplicationsService();
                       await appService.submitApplication(
                         jobId: widget.jobId!,
-                        price: hourlyRate,
+                        price: parsedPrice,
                         proposal: bio,
                       );
                       
@@ -298,18 +313,21 @@ class _SubmitProposalScreenState extends State<SubmitProposalScreen> {
     );
   }
 
-  Widget _buildTag(String text) {
+  Widget _buildTag(String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
-        text,
-        style: TextStyle(color: Colors.grey[800], fontSize: 10),
-      ),
+      child: Text(label, style: TextStyle(color: Colors.blue[700], fontSize: 12, fontWeight: FontWeight.w500)),
     );
+  }
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    super.dispose();
   }
 
   Widget _buildSpecRow(String label, String value, {Color valueColor = Colors.black}) {

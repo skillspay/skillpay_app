@@ -49,6 +49,15 @@ export class ReviewsService {
     return newReview;
   }
 
+  async createByJob(homeownerUserId: string, jobId: string, rating: number, review?: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { jobId },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!booking) throw new NotFoundException('Booking not found for this job');
+    return this.create(homeownerUserId, booking.id, rating, review);
+  }
+
   async getForArtisan(artisanId: string) {
     return this.prisma.review.findMany({
       where: { artisanId },
