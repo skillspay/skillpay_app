@@ -24,7 +24,8 @@ const List<Map<String, String>> _phoneCodes = [
 ];
 
 class EditAddressScreen extends StatefulWidget {
-  const EditAddressScreen({super.key});
+  final Map<String, dynamic>? existingAddress;
+  const EditAddressScreen({super.key, this.existingAddress});
 
   @override
   State<EditAddressScreen> createState() => _EditAddressScreenState();
@@ -33,6 +34,7 @@ class EditAddressScreen extends StatefulWidget {
 class _EditAddressScreenState extends State<EditAddressScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _labelController = TextEditingController();
 
   String _selectedPhoneCode = '+1';
   String countryValue = '';
@@ -44,24 +46,28 @@ class _EditAddressScreenState extends State<EditAddressScreen> {
   @override
   void initState() {
     super.initState();
+    // Pre-populate if editing
+    if (widget.existingAddress != null) {
+      final addr = widget.existingAddress!;
+      _addressController.text = addr['address']?.toString() ?? '';
+      _labelController.text = addr['label']?.toString() ?? '';
+    }
     _phoneController.addListener(_validateForm);
     _addressController.addListener(_validateForm);
+    _labelController.addListener(_validateForm);
   }
 
   @override
   void dispose() {
     _phoneController.dispose();
     _addressController.dispose();
+    _labelController.dispose();
     super.dispose();
   }
 
   void _validateForm() {
     setState(() {
-      _isFormValid = _phoneController.text.isNotEmpty &&
-          _addressController.text.isNotEmpty &&
-          countryValue.isNotEmpty &&
-          stateValue.isNotEmpty &&
-          cityValue.isNotEmpty;
+      _isFormValid = _addressController.text.isNotEmpty;
     });
   }
 
@@ -70,15 +76,30 @@ class _EditAddressScreenState extends State<EditAddressScreen> {
     setState(() => _isLoading = true);
     try {
       final service = CustomerProfileService();
-      await service.addAddress(
-        label: 'Home', // Or allow user to input
-        address: '${_addressController.text.trim()}, $cityValue, $stateValue, $countryValue',
-      );
+      final label = _labelController.text.trim().isNotEmpty
+          ? _labelController.text.trim()
+          : 'Home';
+      final address = _addressController.text.trim();
+
+      if (widget.existingAddress != null) {
+        // Edit existing
+        await service.updateAddress(
+          widget.existingAddress!['id'].toString(),
+          label: label,
+          address: address,
+        );
+      } else {
+        // Add new
+        await service.addAddress(label: label, address: address);
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Address saved successfully!'),
-            backgroundColor: AppColors.primary,
+          SnackBar(
+            content: Text(widget.existingAddress != null
+                ? 'Address updated!'
+                : 'Address saved!'),
+            backgroundColor: Colors.green,
           ),
         );
         Navigator.pop(context, true);

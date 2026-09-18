@@ -11,6 +11,8 @@ class MessageModel {
   final List<String> attachmentUrls;
   final bool seen;
   final DateTime createdAt;
+  bool isSending;
+  bool hasError;
 
   MessageModel({
     required this.id,
@@ -20,6 +22,8 @@ class MessageModel {
     required this.attachmentUrls,
     required this.seen,
     required this.createdAt,
+    this.isSending = false,
+    this.hasError = false,
   });
 
   factory MessageModel.fromMap(Map<String, dynamic> map) {

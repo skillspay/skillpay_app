@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/dashboard_screen.dart';
 import 'package:skillpay/screens/jobs_screen.dart';
-import 'package:skillpay/screens/history_screen.dart';
+import 'package:skillpay/screens/artisans_screen.dart';
 import 'package:skillpay/screens/messages_screen.dart';
 import 'package:skillpay/screens/settings_screen.dart';
 
@@ -20,7 +20,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const JobsScreen(),
-    const HistoryScreen(),
+    const ArtisansScreen(),
     const MessagesScreen(),
     const SettingsScreen(),
   ];
@@ -62,8 +62,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
                 _NavBarItem(
-                  icon: Icons.bar_chart_rounded,
-                  label: 'History',
+                  icon: Icons.people_alt_outlined,
+                  label: 'Artisans',
                   isSelected: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
                 ),
@@ -104,25 +104,29 @@ class _NavBarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isSelected ? AppColors.textDark : const Color(0xFFB0B0B0);
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.outfit(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: color,
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -7,7 +7,9 @@ import 'package:skillpay/models/proposal_model.dart';
 // import 'package:skillpay/screens/chat_screen.dart'; // From previous task
 
 class ProposalsScreen extends StatefulWidget {
-  const ProposalsScreen({super.key});
+  final String? jobId;
+  
+  const ProposalsScreen({super.key, this.jobId});
 
   @override
   State<ProposalsScreen> createState() => _ProposalsScreenState();
@@ -20,30 +22,8 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   @override
   void initState() {
     super.initState();
-    _proposalsFuture = _proposalsService.fetchProposals();
+    _proposalsFuture = _proposalsService.fetchProposals(jobId: widget.jobId);
   }
-
-  // Fallback mock data if DB is empty or fails during prototyping
-  final List<Map<String, dynamic>> _mockProposals = const [
-    {
-      'name': 'James Walters P',
-      'location': 'CA, California',
-      'badges': ['Engineering', 'Plumbing'],
-      'bio': 'Im a professional and technical plumbing engineer with over 10yrs experience in A...',
-      'rating': 4.7,
-      'jobsCompleted': 48,
-      'imagePath': 'assets/images/avatar_james.png',
-    },
-    {
-      'name': 'Sarah Mathewson',
-      'location': 'CA, California',
-      'badges': ['Engineering', 'Plumbing'],
-      'bio': 'Im a professional and technical plumbing engineer with over 10yrs experience in A...',
-      'rating': 4.7,
-      'jobsCompleted': 162,
-      'imagePath': 'assets/images/cat_cleaning.png', // Placeholder
-    },
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -85,14 +65,32 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
           final proposals = snapshot.data ?? [];
 
           if (proposals.isEmpty) {
-            // IMPORTANT: For prototyping aesthetics, if the DB table is empty or doesn't exist yet, 
-            // we will render the mock proposals so the UI isn't jarringly empty for the customer.
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              itemCount: _mockProposals.length,
-              itemBuilder: (context, index) {
-                return _buildProposalCard(context, _mockProposals[index]);
-              },
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No proposals yet',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'When workers apply to your jobs,\ntheir proposals will appear here.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      color: AppColors.textMedium,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -103,13 +101,18 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
             itemBuilder: (context, index) {
               final prop = proposals[index];
               return _buildProposalCard(context, {
-                'name': prop.artisanName,
-                'location': prop.artisanLocation,
-                'badges': [], // Or extract from categories
-                'bio': prop.proposal.isNotEmpty ? prop.proposal : prop.artisanBio,
-                'rating': prop.artisanRating,
-                'jobsCompleted': prop.artisanCompletedJobs,
+                'name': prop.artisanName ?? 'Unknown Artisan',
+                'location': prop.artisanLocation ?? 'Location unknown',
+                'badges': prop.artisanCategories.isNotEmpty ? prop.artisanCategories : <String>[],
+                'bio': prop.proposal.isNotEmpty ? prop.proposal : (prop.artisanBio ?? ''),
+                'rating': prop.artisanRating ?? 0.0,
+                'jobsCompleted': prop.artisanCompletedJobs ?? 0,
                 'imagePath': prop.artisanAvatarUrl, 
+                'hourlyRate': prop.artisanHourlyRate ?? prop.price ?? 0.0,
+                'price': prop.price,
+                'jobId': prop.jobId,
+                'id': prop.artisanId,
+                'applicationId': prop.id,
                 'isNetworkImage': prop.artisanAvatarUrl?.startsWith('http') ?? false,
               });
             },
@@ -156,9 +159,9 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         image: DecorationImage(
-                          image: (data['isNetworkImage'] == true)
+                          image: (data['imagePath']?.toString().startsWith('http') == true)
                               ? NetworkImage(data['imagePath']) as ImageProvider
-                              : AssetImage(data['imagePath']),
+                              : AssetImage(data['imagePath'] ?? 'assets/images/avatar_james.png'),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -273,7 +276,10 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      // Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(artisanName: data['name'])));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ProposalDetailsScreen(artisanData: data)),
+                      );
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
@@ -284,28 +290,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
                       ),
                     ),
                     child: Text(
-                      'Message',
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Hire',
+                      'View Proposal',
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.w600,
                       ),

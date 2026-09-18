@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/profile_screen.dart';
 import 'package:skillpay/screens/proposals_screen.dart';
+import 'package:skillpay/screens/history_screen.dart';
 import 'package:skillpay/screens/transactions_screen.dart';
 import 'package:skillpay/screens/address_screen.dart';
 import 'package:skillpay/screens/security_screen.dart';
@@ -53,6 +54,17 @@ class SettingsScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const ProposalsScreen()),
+              );
+            },
+          ),
+          _buildSettingsItem(
+            context: context,
+            icon: Icons.history_rounded,
+            title: 'History',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HistoryScreen()),
               );
             },
           ),

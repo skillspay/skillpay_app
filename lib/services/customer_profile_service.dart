@@ -22,9 +22,11 @@ class CustomerProfileService {
   Future<List<Map<String, dynamic>>> fetchAddresses() async {
     try {
       final data = await _api.get('/homeowners/addresses') as List<dynamic>;
+      print('FETCH ADDRESSES RESPONSE: $data');
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    } on ApiException {
-      return [];
+    } on ApiException catch (e) {
+      print('FETCH ADDRESSES ERROR: $e');
+      throw Exception(e.message);
     }
   }
 

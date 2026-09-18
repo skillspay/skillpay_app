@@ -209,13 +209,13 @@ class AuthService {
     String? profilePhoto,
   }) async {
     try {
-      await _api.patch('/homeowners/profile', body: {
-        'fullName': fullName,
-        'phone': phone,
-        if (dateOfBirth != null && dateOfBirth.isNotEmpty) 'dob': dateOfBirth,
-        if (profilePhoto != null && profilePhoto.isNotEmpty)
-          'profilePhoto': profilePhoto,
-      });
+      final body = <String, dynamic>{};
+      if (fullName.isNotEmpty) body['fullName'] = fullName;
+      if (phone.isNotEmpty) body['phone'] = phone;
+      if (dateOfBirth != null && dateOfBirth.isNotEmpty) body['dob'] = dateOfBirth;
+      if (profilePhoto != null && profilePhoto.isNotEmpty) body['profilePhoto'] = profilePhoto;
+      if (body.isEmpty) return;
+      await _api.patch('/homeowners/profile', body: body);
     } on ApiException catch (e) {
       throw Exception(e.message);
     }

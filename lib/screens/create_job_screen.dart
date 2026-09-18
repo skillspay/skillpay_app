@@ -6,10 +6,15 @@ import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/widgets/auth_widgets.dart';
 import 'package:skillpay/services/jobs_service.dart';
 import 'package:skillpay/services/customer_profile_service.dart';
+import 'package:skillpay/services/categories_service.dart';
 
+import 'package:skillpay/models/job_model.dart';
+import 'package:skillpay/models/category_model.dart';
 
 class CreateJobScreen extends StatefulWidget {
-  const CreateJobScreen({super.key});
+  final JobModel? initialJob;
+  
+  const CreateJobScreen({super.key, this.initialJob});
 
   @override
   State<CreateJobScreen> createState() => _CreateJobScreenState();
@@ -22,7 +27,10 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   final JobsService _jobsService = JobsService();
   
   String? _selectedCategory;
+  List<CategoryModel> _categories = [];
+  List<String> _categoryItems = ['Plumbing', 'Electrical', 'Cleaning'];
   String? _selectedTimeline;
+  List<String> _timelineItems = ['Flexible', 'Urgent', 'Next 48 Hours'];
   String? _selectedLocation;
   List<String> _savedLocations = [];
   File? _selectedFile;
@@ -33,6 +41,45 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   void initState() {
     super.initState();
     _loadSavedLocations();
+    _loadCategories();
+    
+    if (widget.initialJob != null) {
+      final job = widget.initialJob!;
+      _titleController.text = job.title;
+      _detailsController.text = job.description;
+      _budgetController.text = '\$${job.budget.toStringAsFixed(2)}';
+      if (job.categoryName.isNotEmpty) {
+        _selectedCategory = job.categoryName;
+        if (!_categoryItems.contains(_selectedCategory)) {
+          _categoryItems.add(_selectedCategory!);
+        }
+      }
+      
+      if (job.address.isNotEmpty) {
+        _selectedLocation = job.address;
+        if (!_savedLocations.contains(_selectedLocation)) {
+          _savedLocations.add(_selectedLocation!);
+        }
+      }
+      // Note: We don't fetch original image urls here for picker, it would require a separate flow
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await CategoriesService().fetchCategories();
+      if (categories.isNotEmpty && mounted) {
+        setState(() {
+          _categories = categories;
+          _categoryItems = categories.map((c) => c.name).toList();
+          if (_selectedCategory != null && !_categoryItems.contains(_selectedCategory)) {
+            _categoryItems.add(_selectedCategory!);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load categories: $e');
+    }
   }
 
   Future<void> _loadSavedLocations() async {
@@ -41,17 +88,18 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       if (addresses.isNotEmpty && mounted) {
         setState(() {
           // Build display strings from structured address data
-          _savedLocations = addresses.map((a) {
-            final parts = [
-              a['street'],
-              a['city'],
-              a['state'],
-              a['country'],
-            ].where((p) => p != null && p.toString().isNotEmpty).toList();
-            return parts.join(', ');
+          final fetchedAddresses = addresses.map((a) {
+            return a['address']?.toString() ?? a['label']?.toString() ?? 'Unknown Location';
           }).toList();
-          // Auto-select first address
-          if (_savedLocations.isNotEmpty) {
+          
+          for (var address in fetchedAddresses) {
+            if (!_savedLocations.contains(address)) {
+              _savedLocations.add(address);
+            }
+          }
+          
+          // Auto-select first address if not in edit mode with a valid location
+          if (_savedLocations.isNotEmpty && _selectedLocation == null) {
             _selectedLocation = _savedLocations.first;
           }
         });
@@ -102,14 +150,57 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _jobsService.createJob(
-        title: _titleController.text.trim(),
-        description: _detailsController.text.trim(),
-        address: _selectedLocation ?? 'Location not provided',
-        budget: double.tryParse(_budgetController.text.replaceAll('\$', '').trim()) ?? 0.0,
-        preferredDate: _selectedTimeline ?? 'Flexible',
-        categoryId: '', // Ideally we need to map category name to ID
-      );
+      final profileService = CustomerProfileService();
+      final profile = await profileService.fetchProfile();
+      final isVerified = profile?['user']?['isVerified'] == true || profile?['isVerified'] == true || profile?['is_verified'] == true;
+      if (!isVerified) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Only verified homeowners can create jobs. Please complete verification.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      List<String>? uploadedUrls;
+      if (_selectedFile != null) {
+        uploadedUrls = await _jobsService.uploadJobImages([_selectedFile!]);
+      }
+
+      String? categoryId;
+      if (_selectedCategory != null) {
+        final match = _categories.where((c) => c.name == _selectedCategory).toList();
+        if (match.isNotEmpty) {
+          categoryId = match.first.id;
+        }
+      }
+
+      if (widget.initialJob != null) {
+        // Edit mode
+        await _jobsService.updateJob(
+          widget.initialJob!.id,
+          title: _titleController.text.trim(),
+          description: _detailsController.text.trim(),
+          address: _selectedLocation ?? 'Location not provided',
+          budget: double.tryParse(_budgetController.text.replaceAll('\$', '').trim()) ?? 0.0,
+          preferredDate: _selectedTimeline ?? 'Flexible',
+          categoryId: categoryId ?? '', 
+          imageUrls: uploadedUrls, // only patch if there are new images
+        );
+      } else {
+        // Create mode
+        await _jobsService.createJob(
+          title: _titleController.text.trim(),
+          description: _detailsController.text.trim(),
+          address: _selectedLocation ?? 'Location not provided',
+          budget: double.tryParse(_budgetController.text.replaceAll('\$', '').trim()) ?? 0.0,
+          preferredDate: _selectedTimeline ?? 'Flexible',
+          categoryId: categoryId ?? '', 
+          imageUrls: uploadedUrls,
+        );
+      }
       
       if (mounted) {
         Navigator.pop(context, true); // Return true to refresh list
@@ -118,7 +209,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating job: $e')),
+          SnackBar(content: Text('Error saving job: $e')),
         );
       }
     }
@@ -134,7 +225,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          'Create Job',
+          widget.initialJob != null ? 'Edit job' : 'Create new job',
           style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -147,18 +238,18 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildLabel('Job Tittle'),
+            _buildLabel('Job Title'),
             buildAuthTextField(
               controller: _titleController,
-              hint: 'Enter job tittle',
+              hint: 'Enter job title',
             ),
             const SizedBox(height: 20),
 
             _buildLabel('Job Category'),
             _buildDropdown(
-              hint: 'Select category',
+              hint: 'Select Category',
               value: _selectedCategory,
-              items: ['Plumbing', 'Electrical', 'Cleaning'],
+              items: _categoryItems,
               onChanged: (val) => setState(() => _selectedCategory = val),
             ),
             const SizedBox(height: 20),
@@ -307,9 +398,9 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
             _buildLabel('Job Timeline'),
             _buildDropdown(
-              hint: 'Select timeline',
+              hint: 'Select Timeline',
               value: _selectedTimeline,
-              items: ['1 Week', '2 Weeks', '1 Month', '3 Months'],
+              items: _timelineItems,
               onChanged: (val) => setState(() => _selectedTimeline = val),
               icon: Icons.calendar_today_outlined,
             ),
@@ -323,7 +414,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             ),
             const SizedBox(height: 40),
 
-            // Fixed bottom create button (part of scroll view here as per UI flow, but could be sticky)
+            // Fixed bottom create button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -344,10 +435,11 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textDark),
                       )
                     : Text(
-                        'Create job',
+                        widget.initialJob != null ? 'Save Changes' : 'Create job',
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          color: Colors.black,
                         ),
                       ),
               ),

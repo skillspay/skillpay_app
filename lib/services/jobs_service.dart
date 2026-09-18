@@ -58,6 +58,36 @@ class JobsService {
     }
   }
 
+  /// Update an existing job.
+  Future<JobModel> updateJob(String jobId, {
+    String? categoryId,
+    String? title,
+    String? description,
+    double? budget,
+    String? address,
+    double? latitude,
+    double? longitude,
+    String? preferredDate,
+    List<String>? imageUrls,
+  }) async {
+    try {
+      final data = await _api.patch('/jobs/$jobId', body: {
+        if (categoryId != null) 'categoryId': categoryId,
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (budget != null) 'budget': budget,
+        if (address != null) 'address': address,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (preferredDate != null) 'preferredDate': preferredDate,
+        if (imageUrls != null) 'images': imageUrls,
+      }) as Map<String, dynamic>;
+      return JobModel.fromMap(data);
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
   /// Upload job images and return their public URLs.
   Future<List<String>> uploadJobImages(List<File> images) async {
     final urls = <String>[];
@@ -81,6 +111,27 @@ class JobsService {
   Future<void> cancelJob(String jobId) async {
     try {
       await _api.patch('/jobs/$jobId/cancel');
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  /// Hire an artisan for a job
+  Future<void> hireArtisan(String jobId, String artisanId) async {
+    try {
+      await _api.post('/bookings/direct', body: {
+        'jobId': jobId,
+        'artisanId': artisanId,
+      });
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  /// Approve a completed job and pay final fee
+  Future<void> approveJob(String jobId) async {
+    try {
+      await _api.patch('/bookings/by-job/$jobId/approve');
     } on ApiException catch (e) {
       throw Exception(e.message);
     }

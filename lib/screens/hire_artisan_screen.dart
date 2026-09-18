@@ -140,7 +140,32 @@ class _HireArtisanScreenState extends State<HireArtisanScreen> {
                     child: ElevatedButton(
                       onPressed: _selectedJob != null
                           ? () {
-                              showPayInvoiceModal(context);
+                              final double amount = _selectedJob!.budget;
+                              showPayInvoiceModal(
+                                context,
+                                jobAmount: amount,
+                                onPaymentSuccess: () async {
+                                  try {
+                                    final artisanId = widget.artisanData['id'];
+                                    if (artisanId != null && _selectedJob != null) {
+                                      await _jobsService.hireArtisan(_selectedJob!.id, artisanId.toString());
+                                    } else {
+                                      // If artisanId is missing, maybe they have artisanId passed some other way?
+                                      // Actually ProposalsScreen passes 'artisanId' via 'id' or we can check 'artisanId'.
+                                      final id = widget.artisanData['id'] ?? widget.artisanData['artisanId'];
+                                      if (id != null) {
+                                        await _jobsService.hireArtisan(_selectedJob!.id, id.toString());
+                                      }
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Failed to assign artisan: \$e')),
+                                      );
+                                    }
+                                  }
+                                },
+                              );
                             }
                           : null,
                       style: ElevatedButton.styleFrom(

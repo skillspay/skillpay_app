@@ -3,17 +3,30 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 // import 'package:skillpay/screens/main_navigation_screen.dart'; // Navigation back to history
 
-void showPayInvoiceModal(BuildContext context) {
+void showPayInvoiceModal(
+  BuildContext context, {
+  required double jobAmount,
+  required VoidCallback onPaymentSuccess,
+}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => const _PayInvoiceModal(),
+    builder: (context) => _PayInvoiceModal(
+      jobAmount: jobAmount,
+      onPaymentSuccess: onPaymentSuccess,
+    ),
   );
 }
 
 class _PayInvoiceModal extends StatefulWidget {
-  const _PayInvoiceModal();
+  final double jobAmount;
+  final VoidCallback onPaymentSuccess;
+
+  const _PayInvoiceModal({
+    required this.jobAmount,
+    required this.onPaymentSuccess,
+  });
 
   @override
   State<_PayInvoiceModal> createState() => _PayInvoiceModalState();
@@ -23,6 +36,13 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
   final TextEditingController _amountController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    final fullAmount = widget.jobAmount;
+    _amountController.text = fullAmount.toStringAsFixed(2);
+  }
+
+  @override
   void dispose() {
     _amountController.dispose();
     super.dispose();
@@ -30,7 +50,11 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
 
   void _onMakePayment() {
     Navigator.pop(context); // Close this modal
-    _showPaymentMethodModal(context);
+    showPaymentMethodModal(
+      context,
+      _amountController.text.isEmpty ? '0.00' : _amountController.text,
+      widget.onPaymentSuccess,
+    );
   }
 
   @override
@@ -74,7 +98,7 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
           const SizedBox(height: 16),
           
           Text(
-            'To start a job you are required to pay 20% of job budget as an upfront payment.',
+            'To start a job you are required to pay 100% of the job budget as an upfront payment (held in escrow).',
             style: GoogleFonts.outfit(
               fontSize: 14,
               color: AppColors.textMedium,
@@ -95,7 +119,7 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
                 ),
               ),
               Text(
-                '\$5,500',
+                '\$${widget.jobAmount.toStringAsFixed(2)}',
                 style: GoogleFonts.outfit(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -108,9 +132,9 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
           const SizedBox(height: 24),
           
           Text(
-            'Amount to pay (20%)',
+            'Amount to pay (Full Budget)',
             style: GoogleFonts.outfit(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               color: AppColors.textDark,
             ),
@@ -122,7 +146,7 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              hintText: 'e.g. 500',
+              hintText: 'e.g. ${(widget.jobAmount).toStringAsFixed(2)}',
               prefixIcon: const Icon(Icons.attach_money, color: AppColors.textDark, size: 20),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -178,21 +202,38 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
 // PAYMENT METHOD MODAL
 // -----------------------------------------------------------------------------
 
-void _showPaymentMethodModal(BuildContext context) {
+void showPaymentMethodModal(BuildContext context, String amountStr, VoidCallback onPaymentSuccess) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => const _PaymentMethodModal(),
+    builder: (context) => _PaymentMethodModal(
+      amount: amountStr,
+      onPaymentSuccess: onPaymentSuccess,
+    ),
   );
 }
 
-class _PaymentMethodModal extends StatelessWidget {
-  const _PaymentMethodModal();
+class _PaymentMethodModal extends StatefulWidget {
+  final String amount;
+  final VoidCallback onPaymentSuccess;
 
-  void _onPay(BuildContext context) {
+  const _PaymentMethodModal({
+    required this.amount,
+    required this.onPaymentSuccess,
+  });
+
+  @override
+  State<_PaymentMethodModal> createState() => _PaymentMethodModalState();
+}
+
+class _PaymentMethodModalState extends State<_PaymentMethodModal> {
+  String _selectedMethod = 'stripe';
+
+  void _onPay() {
+    widget.onPaymentSuccess(); // Call backend hire action here
     Navigator.pop(context); // Close this modal
-    _showPaymentSuccessModal(context);
+    showPaymentSuccessModal(context, widget.amount);
   }
 
   @override
@@ -207,123 +248,94 @@ class _PaymentMethodModal extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Apple Pay Button
-          ElevatedButton.icon(
-            onPressed: () => _onPay(context),
-            icon: const Icon(Icons.apple, color: Colors.white), // Simplified Apple logo representation
-            label: Text(
-              'Pay',
-              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600),
+          Text(
+            'Select Payment Method',
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+            textAlign: TextAlign.center,
           ),
-          
-          const SizedBox(height: 12),
-          
-          // Link Pay Button
-          ElevatedButton.icon(
-            onPressed: () => _onPay(context),
-            icon: const Icon(Icons.link, color: Colors.white),
-            label: Text(
-              'Pay with Link',
-              style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00D67D), // Link Green
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-          
           const SizedBox(height: 24),
           
-          // Divider
-          Row(
-            children: [
-              const Expanded(child: Divider(color: Color(0xFFE0E0E0))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Or pay using',
-                  style: GoogleFonts.outfit(fontSize: 13, color: AppColors.textMedium),
+          GestureDetector(
+            onTap: () => setState(() => _selectedMethod = 'stripe'),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _selectedMethod == 'stripe' ? AppColors.primary : const Color(0xFFE0E0E0),
+                  width: 2,
                 ),
+                borderRadius: BorderRadius.circular(12),
+                color: _selectedMethod == 'stripe' ? AppColors.primary.withAlpha(20) : Colors.white,
               ),
-              const Expanded(child: Divider(color: Color(0xFFE0E0E0))),
-            ],
+              child: Row(
+                children: [
+                  const Icon(Icons.credit_card, color: Color(0xFF0066FF), size: 28),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Pay with Stripe (Card)',
+                      style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  if (_selectedMethod == 'stripe')
+                    const Icon(Icons.check_circle, color: AppColors.primary),
+                ],
+              ),
+            ),
           ),
           
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           
-          // Options
-          _buildPaymentOption(Icons.credit_card, 'Card', ''),
-          _buildPaymentOption(Icons.payments_outlined, 'Klarna', 'Pay now or pay later with Klarna'),
-          _buildPaymentOption(Icons.attach_money_rounded, 'Cash App Pay', ''),
-          _buildPaymentOption(Icons.account_balance_outlined, 'US bank account', ''),
+          GestureDetector(
+            onTap: () => setState(() => _selectedMethod = 'paypal'),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _selectedMethod == 'paypal' ? AppColors.primary : const Color(0xFFE0E0E0),
+                  width: 2,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                color: _selectedMethod == 'paypal' ? AppColors.primary.withAlpha(20) : Colors.white,
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.paypal, color: Color(0xFF003087), size: 28),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Pay with PayPal',
+                      style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  if (_selectedMethod == 'paypal')
+                    const Icon(Icons.check_circle, color: AppColors.primary),
+                ],
+              ),
+            ),
+          ),
           
           const SizedBox(height: 32),
           
           ElevatedButton.icon(
-            onPressed: () => _onPay(context),
+            onPressed: _onPay,
             icon: const Icon(Icons.lock_outline, size: 18),
             label: Text(
-              'Pay \$97.42',
+              'Pay \$${widget.amount}',
               style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0066FF), // Stripe Blue
+              backgroundColor: _selectedMethod == 'stripe' ? const Color(0xFF0066FF) : const Color(0xFF003087),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 0,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentOption(IconData icon, String title, String subtitle) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFF0F0F0))),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.textDark, size: 24),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: AppColors.textMedium,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right, color: AppColors.textMedium),
         ],
       ),
     );
@@ -334,17 +346,18 @@ class _PaymentMethodModal extends StatelessWidget {
 // PAYMENT SUCCESS MODAL
 // -----------------------------------------------------------------------------
 
-void _showPaymentSuccessModal(BuildContext context) {
+void showPaymentSuccessModal(BuildContext context, String amount) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => const _PaymentSuccessModal(),
+    builder: (context) => _PaymentSuccessModal(amount: amount),
   );
 }
 
 class _PaymentSuccessModal extends StatelessWidget {
-  const _PaymentSuccessModal();
+  final String amount;
+  const _PaymentSuccessModal({required this.amount});
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +403,7 @@ class _PaymentSuccessModal extends StatelessWidget {
           const SizedBox(height: 12),
           
           Text(
-            'Payment of \$500 has been\nmade successfully.',
+            'Payment of \$$amount has been\nmade successfully.',
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
               fontSize: 14,

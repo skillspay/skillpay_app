@@ -4,7 +4,7 @@ import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/services/jobs_service.dart';
 import 'package:skillpay/models/job_model.dart';
 import 'package:skillpay/screens/dashboard_screen.dart'; // for capitalize extension
-import 'package:skillpay/screens/history_job_details_screen.dart';
+import 'package:skillpay/screens/job_details_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -21,7 +21,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _jobsFuture = _jobsService.fetchMyJobs();
+    _refresh();
+  }
+
+  void _refresh() {
+    setState(() {
+      _jobsFuture = _jobsService.fetchMyJobs();
+    });
   }
 
   @override
@@ -177,13 +183,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
 
     return InkWell(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => HistoryJobDetailsScreen(job: job),
+            builder: (_) => JobDetailsScreen(job: job),
           ),
         );
+        if (result == true) {
+          _refresh();
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 20),

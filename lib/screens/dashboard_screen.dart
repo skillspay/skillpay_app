@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/widgets/artisan_card.dart';
@@ -7,7 +8,15 @@ import 'package:skillpay/models/job_model.dart';
 import 'package:skillpay/screens/notifications_screen.dart';
 import 'package:skillpay/services/worker_service.dart';
 import 'package:skillpay/services/customer_profile_service.dart';
+import 'package:skillpay/services/categories_service.dart';
 import 'package:skillpay/models/worker_model.dart';
+import 'package:skillpay/models/category_model.dart';
+import 'package:skillpay/screens/artisan_profile_screen.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:skillpay/services/notifications_service.dart';
+import 'package:skillpay/screens/artisans_screen.dart';
+import 'package:skillpay/screens/profile_screen.dart';
+import 'package:skillpay/screens/job_details_screen.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -27,21 +36,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final JobsService _jobsService = JobsService();
   final WorkerService _workerService = WorkerService();
   final CustomerProfileService _profileService = CustomerProfileService();
+  final NotificationsService _notificationsService = NotificationsService();
+  final CategoriesService _categoriesService = CategoriesService();
   late Future<List<JobModel>> _jobsFuture;
   late Future<Map<String, dynamic>?> _userProfileFuture;
   late Future<List<WorkerModel>> _workersFuture;
+  late Future<List<CategoryModel>> _categoriesFuture;
+  bool _hasUnreadNotifications = false;
+  bool _isVerified = true; // Default to true so it doesn't flash
 
   @override
   void initState() {
     super.initState();
-    _jobsFuture = _jobsService.fetchMyJobs();
-    _userProfileFuture = _profileService.fetchProfile();
+    _refreshJobs();
+    _userProfileFuture = _profileService.fetchProfile().then((profile) {
+      if (mounted && profile != null) {
+        setState(() {
+          _isVerified = profile['user']?['isVerified'] == true || profile['isVerified'] == true || profile['is_verified'] == true;
+        });
+      }
+      return profile;
+    });
     _workersFuture = _workerService.fetchNearbyWorkers();
+    _categoriesFuture = _categoriesService.fetchCategories();
+    _checkNotifications();
+  }
+
+  void _refreshJobs() {
+    setState(() {
+      _jobsFuture = _jobsService.fetchMyJobs();
+    });
+  }
+
+  Future<void> _checkNotifications() async {
+    final notifications = await _notificationsService.fetchNotifications();
+    if (mounted) {
+      setState(() {
+        _hasUnreadNotifications = notifications.any((n) => !n.isRead);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
@@ -62,11 +102,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      FutureBuilder<Map<String, dynamic>?>(
-                        future: _userProfileFuture,
+                      Expanded(
+                        child: FutureBuilder<Map<String, dynamic>?>(
+                          future: _userProfileFuture,
                         builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return Shimmer.fromColors(
+                              baseColor: Colors.white.withAlpha(50),
+                              highlightColor: Colors.white.withAlpha(150),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(width: 100, height: 20, color: Colors.white),
+                                      const SizedBox(height: 4),
+                                      Container(width: 180, height: 12, color: Colors.white),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
                           String firstName = 'User';
                           String? profileImageUrl;
+                          bool isVerified = false;
                           if (snapshot.hasData && snapshot.data != null) {
                             final data = snapshot.data!;
                             // NestJS returns fullName (camelCase)
@@ -77,6 +144,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             }
                             profileImageUrl = data['profilePhoto']?.toString() ??
                                 data['profile_photo']?.toString();
+                            
+                            isVerified = data['user']?['isVerified'] == true || data['isVerified'] == true || data['is_verified'] == true;
                           }
 
                           return Row(
@@ -101,16 +170,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     : null,
                               ),
                               const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Hi $firstName,',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            'Hi $firstName,',
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.verified,
+                                        color: isVerified ? Colors.blue : Colors.orange,
+                                        size: 16,
+                                      ),
+                                    ],
                                   ),
                                   Text(
                                     'What do you want to do today?',
@@ -120,21 +204,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                 ],
-                              ),
+                              )),
                             ],
                           );
                         },
-                      ),
+                      )),
+                      const SizedBox(width: 12),
                       
                       // Notification bell
                       InkWell(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const NotificationsScreen(),
                             ),
                           );
+                          _checkNotifications(); // Refresh read status
                         },
                         borderRadius: BorderRadius.circular(22),
                         child: Stack(
@@ -148,18 +234,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               child: const Icon(Icons.notifications_none_rounded, color: Colors.white),
                             ),
-                            Positioned(
-                              top: 10,
-                              right: 12,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
+                            if (_hasUnreadNotifications)
+                              Positioned(
+                                top: 10,
+                                right: 12,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -180,6 +267,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Expanded(
                           child: TextField(
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (value) {
+                              if (value.trim().isNotEmpty) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ArtisansScreen(initialSearchQuery: value.trim()),
+                                  ),
+                                );
+                              }
+                            },
                             decoration: InputDecoration(
                               hintText: 'Search for worker...',
                               hintStyle: GoogleFonts.outfit(
@@ -216,6 +314,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!_isVerified) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, color: Colors.orange),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Pending Verification',
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Your account is being reviewed by our admin team. You can post jobs once approved.',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    color: Colors.amber.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   
                   // Categories
@@ -235,15 +374,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        _CategoryItem('assets/images/cat_cleaning.png', 'Cleaning'),
-                        const SizedBox(width: 16),
-                        _CategoryItem('assets/images/cat_plumbing.png', 'Plumbing'),
-                        const SizedBox(width: 16),
-                        _CategoryItem('assets/images/cat_electrical.png', 'Electrical'),
-                      ],
+                    child: FutureBuilder<List<CategoryModel>>(
+                      future: _categoriesFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Shimmer.fromColors(
+                            baseColor: Colors.grey[300]!,
+                            highlightColor: Colors.grey[100]!,
+                            child: Row(
+                              children: List.generate(3, (index) => Padding(
+                                padding: const EdgeInsets.only(right: 16),
+                                child: Container(
+                                  width: 96,
+                                  height: 96,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                              )),
+                            ),
+                          );
+                        }
+
+                        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                          // Fallback to defaults
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              _CategoryItem('assets/images/cat_cleaning.png', 'Cleaning'),
+                              const SizedBox(width: 16),
+                              _CategoryItem('assets/images/cat_plumbing.png', 'Plumbing'),
+                              const SizedBox(width: 16),
+                              _CategoryItem('assets/images/cat_electrical.png', 'Electrical'),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: snapshot.data!.map((category) {
+                            // Map category name to static icon or use network icon if available
+                            String iconPath = 'assets/images/cat_cleaning.png';
+                            if (category.name.toLowerCase().contains('plumb')) iconPath = 'assets/images/cat_plumbing.png';
+                            if (category.name.toLowerCase().contains('elect')) iconPath = 'assets/images/cat_electrical.png';
+                            if (category.name.toLowerCase().contains('carp')) iconPath = 'assets/images/cat_carpentry.png';
+                            if (category.name.toLowerCase().contains('paint')) iconPath = 'assets/images/cat_painting.png';
+
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 16),
+                              child: _CategoryItem(category.image ?? category.icon ?? iconPath, category.name),
+                            );
+                          }).toList(),
+                        );
+                      },
                     ),
                   ),
                   
@@ -286,9 +470,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       future: _workersFuture,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Padding(
-                            padding: EdgeInsets.all(24.0),
-                            child: CircularProgressIndicator(color: AppColors.primary),
+                          return Shimmer.fromColors(
+                            baseColor: Colors.grey[300]!,
+                            highlightColor: Colors.grey[100]!,
+                            child: Row(
+                              children: List.generate(3, (index) => Padding(
+                                padding: const EdgeInsets.only(right: 16),
+                                child: Container(
+                                  width: 160,
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                              )),
+                            ),
                           );
                         }
                         if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
@@ -309,6 +506,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   : worker.businessName ?? 'Artisan',
                               jobsCompleted: worker.completedJobs,
                               rating: worker.averageRating,
+                              isVerified: worker.isVerified,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ArtisanProfileScreen(worker: worker),
+                                  ),
+                                );
+                              },
                             ),
                           )).toList(),
                         );
@@ -366,10 +572,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     future: _jobsFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: CircularProgressIndicator(color: AppColors.primary),
-                        ));
+                        return Shimmer.fromColors(
+                          baseColor: Colors.grey[300]!,
+                          highlightColor: Colors.grey[100]!,
+                          child: Column(
+                            children: List.generate(3, (index) => Container(
+                              margin: const EdgeInsets.only(left: 24, right: 24, bottom: 20),
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            )),
+                          ),
+                        );
                       }
 
                       if (snapshot.hasError) {
@@ -394,12 +610,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       return Column(
                         children: previewJobs.map((job) {
                           return _buildHistoryItem(
-                            id: job.id.split('-').first.toUpperCase(),
-                            artisan: job.isAccepted || job.isInProgress || job.isCompleted
-                                ? 'Assigned'
-                                : 'Searching',
-                            trade: job.categoryName,
-                            status: job.status.capitalize(),
+                            job: job,
                           );
                         }).toList(),
                       );
@@ -413,20 +624,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
   Widget _buildHistoryItem({
-    required String id,
-    required String artisan,
-    required String trade,
-    required String status,
+    required JobModel job,
   }) {
+    final id = job.id.split('-').first.toUpperCase();
+    final artisan = job.isAccepted || job.isInProgress || job.isCompleted ? 'Assigned' : 'Searching';
+    final trade = job.categoryName;
+    final status = job.status.capitalize();
     final isCompleted = status == 'Completed';
-    return Container(
-      margin: const EdgeInsets.only(left: 24, right: 24, bottom: 20),
-      child: Column(
-        children: [
+
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => JobDetailsScreen(job: job),
+          ),
+        );
+        if (result == true) {
+          _refreshJobs();
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(left: 24, right: 24, bottom: 20),
+        child: Column(
+          children: [
           Row(
             children: [
               Container(
@@ -488,6 +714,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
         ],
       ),
+    ),
     );
   }
 }
@@ -510,7 +737,9 @@ class _CategoryItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           alignment: Alignment.center,
-          child: Image.asset(imagePath, width: 48, height: 48),
+          child: imagePath.startsWith('http')
+              ? Image.network(imagePath, width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.category, size: 48, color: AppColors.textMedium))
+              : Image.asset(imagePath, width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.category, size: 48, color: AppColors.textMedium)),
         ),
         const SizedBox(height: 12),
         Text(

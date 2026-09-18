@@ -5,6 +5,7 @@ import 'package:skillpay/widgets/job_card.dart';
 import 'package:skillpay/screens/create_job_screen.dart';
 import 'package:skillpay/services/jobs_service.dart';
 import 'package:skillpay/models/job_model.dart';
+import 'package:skillpay/services/customer_profile_service.dart';
 
 class JobsScreen extends StatefulWidget {
   const JobsScreen({super.key});
@@ -16,11 +17,28 @@ class JobsScreen extends StatefulWidget {
 class _JobsScreenState extends State<JobsScreen> {
   final JobsService _jobsService = JobsService();
   late Future<List<JobModel>> _jobsFuture;
+  bool? _isVerified;
 
   @override
   void initState() {
     super.initState();
     _refreshJobs();
+    _checkVerification();
+  }
+
+  void _checkVerification() async {
+    try {
+      final profile = await CustomerProfileService().fetchProfile();
+      if (mounted && profile != null) {
+        setState(() {
+          _isVerified = profile['user']?['isVerified'] == true || profile['isVerified'] == true || profile['is_verified'] == true;
+        });
+      } else {
+        if (mounted) setState(() => _isVerified = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isVerified = false);
+    }
   }
 
   void _refreshJobs() {
@@ -30,6 +48,19 @@ class _JobsScreenState extends State<JobsScreen> {
   }
 
   void _onCreateNew() async {
+    if (_isVerified == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Checking verification status... please wait.')),
+      );
+      return;
+    }
+    if (!_isVerified!) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your account must be verified by an admin to create a job.')),
+      );
+      return;
+    }
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CreateJobScreen()),
@@ -165,18 +196,12 @@ class _JobsScreenState extends State<JobsScreen> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: JobCard(
-            title: job.title,
-            budget: '\$${job.budget.toStringAsFixed(2)}',
-            tags: [job.categoryName],
-            location: job.address,
-            description: job.description,
-            jobId: job.id.split('-').first.toUpperCase(),
-            proposalCount: job.applicationCount,
-            status: job.status,
+            job: job,
+            onJobUpdated: _refreshJobs,
           ),
         );
       },
     );
   }
-}
 
+}

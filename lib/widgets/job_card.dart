@@ -3,47 +3,34 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/job_details_screen.dart';
 
+import 'package:skillpay/models/job_model.dart';
+
 class JobCard extends StatelessWidget {
-  final String title;
-  final String budget;
-  final List<String> tags;
-  final String location;
-  final String description;
-  final String jobId;
-  final int proposalCount;
-  final String status;
+  final JobModel job;
+
+  final VoidCallback? onJobUpdated;
 
   const JobCard({
     super.key,
-    required this.title,
-    required this.budget,
-    required this.tags,
-    required this.location,
-    required this.description,
-    required this.jobId,
-    required this.proposalCount,
-    this.status = 'Open',
+    required this.job,
+    this.onJobUpdated,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => JobDetailsScreen(
-              title: title,
-              budget: budget,
-              tags: tags,
-              location: location,
-              description: description,
-              jobId: jobId,
-              proposalCount: proposalCount,
-              status: status,
+              job: job,
             ),
           ),
         );
+        if (result == true && onJobUpdated != null) {
+          onJobUpdated!();
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -63,7 +50,7 @@ class JobCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title,
+              job.title,
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -81,7 +68,7 @@ class JobCard extends StatelessWidget {
                 ),
                 children: [
                   TextSpan(
-                    text: budget,
+                    text: '\$${job.budget.toStringAsFixed(2)}',
                     style: GoogleFonts.outfit(color: Colors.green.shade600),
                   ),
                 ],
@@ -91,7 +78,7 @@ class JobCard extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: tags.map((tag) => _buildTag(tag)).toList(),
+              children: [job.categoryName].map((tag) => _buildTag(tag)).toList(),
             ),
             const SizedBox(height: 16),
             Row(
@@ -100,7 +87,7 @@ class JobCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    location,
+                    job.address,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
@@ -113,7 +100,7 @@ class JobCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              description,
+              job.description,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.outfit(
@@ -128,7 +115,7 @@ class JobCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Job ID: $jobId',
+                  'Job ID: ${job.id.split('-').first.toUpperCase()}',
                   style: GoogleFonts.outfit(
                     fontSize: 12,
                     color: AppColors.textLight,
@@ -138,7 +125,7 @@ class JobCard extends StatelessWidget {
                 const CircleAvatar(radius: 2, backgroundColor: AppColors.textLight),
                 const SizedBox(width: 12),
                 Text(
-                  'Proposal $proposalCount',
+                  'Proposal ${job.applicationCount}',
                   style: GoogleFonts.outfit(
                     fontSize: 12,
                     color: AppColors.textLight,

@@ -41,11 +41,11 @@ class HelpSupportScreen extends StatelessWidget {
           
           _buildSupportOption(
             context: context,
-            icon: Icons.chat_bubble_outline_rounded,
-            title: 'Live Chat',
-            subtitle: 'Start a conversation with our team',
+            icon: Icons.confirmation_number_outlined,
+            title: 'Submit a Ticket',
+            subtitle: 'Raise a dispute or report an issue',
             onTap: () {
-              // Future: Open live chat provider
+              // Future: Open ticket form
             },
           ),
           

@@ -74,26 +74,47 @@ class ApiClient {
   // ─── Core request methods ────────────────────────────────────────────────
 
   Future<dynamic> get(String path, {Map<String, dynamic>? query}) async {
-    final response = await http.get(_uri(path, query), headers: await _asyncHeaders());
-    return _handleResponse(response);
+    try {
+      final response = await http.get(_uri(path, query), headers: await _asyncHeaders());
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException(message: 'Network error: Unable to connect to server.', statusCode: 503);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(message: 'An unexpected error occurred: $e', statusCode: 500);
+    }
   }
 
   Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
-    final response = await http.post(
-      _uri(path),
-      headers: await _asyncHeaders(),
-      body: body != null ? jsonEncode(body) : null,
-    );
-    return _handleResponse(response);
+    try {
+      final response = await http.post(
+        _uri(path),
+        headers: await _asyncHeaders(),
+        body: body != null ? jsonEncode(body) : null,
+      );
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException(message: 'Network error: Unable to connect to server.', statusCode: 503);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(message: 'An unexpected error occurred: $e', statusCode: 500);
+    }
   }
 
   Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
-    final response = await http.patch(
-      _uri(path),
-      headers: await _asyncHeaders(),
-      body: body != null ? jsonEncode(body) : null,
-    );
-    return _handleResponse(response);
+    try {
+      final response = await http.patch(
+        _uri(path),
+        headers: await _asyncHeaders(),
+        body: body != null ? jsonEncode(body) : null,
+      );
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException(message: 'Network error: Unable to connect to server.', statusCode: 503);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(message: 'An unexpected error occurred: $e', statusCode: 500);
+    }
   }
 
   Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
@@ -130,6 +151,9 @@ class ApiClient {
 
   dynamic _handleResponse(http.Response response) {
     debugPrint('[API] ${response.request?.method} ${response.request?.url} → ${response.statusCode}');
+    if (response.statusCode >= 400) {
+      debugPrint('[API ERROR BODY] ${response.body}');
+    }
 
     final body = response.body.isNotEmpty ? response.body : '{}';
 

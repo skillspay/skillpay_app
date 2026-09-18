@@ -64,7 +64,7 @@ class ProposalModel {
       artisanName: artisan['fullName']?.toString() ??
           artisan['full_name']?.toString() ??
           'Unknown Artisan',
-      artisanLocation: artisan['location']?.toString(),
+      artisanLocation: artisan['basedIn']?.toString() ?? artisan['based_in']?.toString() ?? artisan['location']?.toString(),
       artisanBio: artisan['bio']?.toString(),
       artisanBusinessName: artisan['businessName']?.toString() ??
           artisan['business_name']?.toString(),

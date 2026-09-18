@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 // import 'package:skillpay/screens/pay_invoice_modal.dart';
 import 'package:skillpay/screens/hire_artisan_screen.dart';
+import 'package:skillpay/screens/chat_screen.dart';
+import 'package:skillpay/services/messages_service.dart';
 
 class ProposalDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> artisanData;
@@ -48,8 +50,6 @@ class ProposalDetailsScreen extends StatelessWidget {
                       _buildStatsSection(),
                       const SizedBox(height: 24),
                       _buildBioSection(),
-                      const SizedBox(height: 24),
-                      _buildImagesSection(),
                       const SizedBox(height: 100), // Padding for sticky bottom nav
                     ],
                   ),
@@ -80,8 +80,18 @@ class ProposalDetailsScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {
-                        // Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(artisanName: artisanData['name'])));
+                      onPressed: () async {
+                        final jobId = artisanData['jobId'];
+                        if (jobId != null) {
+                          final chatModel = await MessagesService().getOrCreateConversation(jobId);
+                          if (chatModel != null && context.mounted) {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(
+                              artisanName: artisanData['name'] ?? 'Artisan',
+                              conversationId: chatModel.id,
+                              artisanData: artisanData,
+                            )));
+                          }
+                        }
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
@@ -166,7 +176,9 @@ class ProposalDetailsScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       image: DecorationImage(
-                        image: AssetImage(artisanData['imagePath'] ?? 'assets/images/avatar_james.png'),
+                        image: (artisanData['imagePath']?.toString().startsWith('http') == true)
+                            ? NetworkImage(artisanData['imagePath']) as ImageProvider
+                            : AssetImage(artisanData['imagePath'] ?? 'assets/images/avatar_james.png'),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -239,9 +251,9 @@ class ProposalDetailsScreen extends StatelessWidget {
     return Column(
       children: [
         _buildStatRow('Experience', '5 years +'),
-        _buildStatRow('Based in', 'California CA'),
+        _buildStatRow('Based in', artisanData['location'] ?? 'Location unknown'),
         _buildStatRow('Work preference', 'Short & Long term'),
-        _buildStatRow('Starting rate', '\$100', valueColor: const Color(0xFF4CAF50)), // Green text
+        _buildStatRow('Proposed cost', '\$${(artisanData['price'] ?? artisanData['hourlyRate'] ?? 0.0).toString()}', valueColor: const Color(0xFF4CAF50)), // Green text
       ],
     );
   }
@@ -291,41 +303,6 @@ class ProposalDetailsScreen extends StatelessWidget {
             fontSize: 14,
             color: AppColors.textMedium,
             height: 1.6,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildImagesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Images',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textDark,
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 100,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: 3, // Mock images
-            itemBuilder: (context, index) {
-              return Container(
-                width: 140,
-                margin: const EdgeInsets.only(right: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.image_outlined, color: Colors.white, size: 32),
-              );
-            },
           ),
         ),
       ],

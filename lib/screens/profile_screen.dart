@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/edit_profile_screen.dart';
+import 'package:skillpay/services/auth_service.dart';
 import 'package:skillpay/services/customer_profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -14,11 +17,50 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>?> _userProfileFuture;
   final _profileService = CustomerProfileService();
+  final _authService = AuthService();
+  bool _uploadingPhoto = false;
 
   @override
   void initState() {
     super.initState();
     _userProfileFuture = _profileService.fetchProfile();
+  }
+
+  void _refresh() {
+    setState(() {
+      _userProfileFuture = _profileService.fetchProfile();
+    });
+  }
+
+  Future<void> _changePhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final url = await _authService.uploadProfileImage(File(picked.path));
+      // Persist the photo URL via a profile patch
+      await _authService.updateUserProfile(
+        fullName: '', // empty — backend only updates non-empty fields
+        phone: '',
+        profilePhoto: url,
+      );
+      _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile photo updated!'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
   }
 
   @override
@@ -44,15 +86,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              // We will pass the current future data or let EditProfileScreen fetch it
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-              ).then((_) {
-                setState(() {
-                  _userProfileFuture = _profileService.fetchProfile();
-                });
-              });
+              ).then((_) => _refresh());
             },
             child: Text(
               'Edit',
@@ -93,73 +130,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final email = data?['user']?['email']?.toString() ??
               data?['email']?.toString() ?? '';
           final phoneNumber = data?['user']?['phone']?.toString() ??
-              data?['phone']?.toString() ??
-              data?['phone_number']?.toString() ?? '';
+              data?['phone']?.toString() ?? '';
           final profileImageUrl = data?['profilePhoto']?.toString() ??
               data?['profile_photo']?.toString();
           final gender = data?['gender']?.toString() ?? '';
           final dob = data?['dob'] != null
               ? _formatDate(data!['dob'].toString())
               : '';
-          
+
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Avatar Area
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E0E0),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                // Avatar with tap-to-change
+                GestureDetector(
+                  onTap: _changePhoto,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          image: profileImageUrl != null
+                              ? DecorationImage(
+                                  image: NetworkImage(
+                                    '$profileImageUrl?v=${DateTime.now().millisecondsSinceEpoch}',
+                                  ),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: _uploadingPhoto
+                            ? const CircularProgressIndicator(
+                                color: AppColors.primary, strokeWidth: 2)
+                            : profileImageUrl == null
+                                ? const Icon(Icons.person, size: 50, color: Colors.white)
+                                : null,
+                      ),
+                      // Camera icon badge
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
                       ),
                     ],
-                    image: profileImageUrl != null
-                        ? DecorationImage(
-                            // Add a unique cache-busting parameter based on time to force Flutter to reload the new image
-                            image: NetworkImage(
-                              '$profileImageUrl?v=${DateTime.now().millisecondsSinceEpoch}',
-                            ),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
                   ),
-                  child: profileImageUrl == null
-                      ? const Icon(Icons.person, size: 50, color: Colors.white)
-                      : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                    ).then((_) {
-                      setState(() {
-                        _userProfileFuture = _profileService.fetchProfile();
-                      });
-                    });
-                  },
+                  onPressed: _uploadingPhoto ? null : _changePhoto,
                   child: Text(
-                    'Change photo',
+                    _uploadingPhoto ? 'Uploading...' : 'Change photo',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primaryDark, // Matching the yellow text
+                      color: AppColors.primaryDark,
                     ),
                   ),
                 ),
-                
-                const SizedBox(height: 48),
-                
+
+                const SizedBox(height: 32),
+
                 // Form Fields (Display Only)
                 _buildProfileField('First Name', firstName),
                 _buildProfileField('Last Name', lastName),
@@ -167,7 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildProfileField('Phone Number', phoneNumber),
                 if (gender.isNotEmpty) _buildProfileField('Gender', gender),
                 if (dob.isNotEmpty) _buildProfileField('Date of Birth', dob),
-                
+
                 const SizedBox(height: 40),
               ],
             ),

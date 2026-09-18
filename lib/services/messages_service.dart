@@ -22,6 +22,23 @@ class MessagesService {
 
   RealtimeChannel? _activeChannel;
 
+  // ─── User Identity ────────────────────────────────────────────────────────
+  
+  static String? _cachedPrismaUserId;
+
+  /// Fetches the user's Prisma ID from the backend to determine if a message is from the current user.
+  Future<String?> getMyPrismaUserId() async {
+    if (_cachedPrismaUserId != null) return _cachedPrismaUserId;
+    try {
+      final data = await _api.get('/auth/me');
+      _cachedPrismaUserId = data['id']?.toString();
+      return _cachedPrismaUserId;
+    } catch (e) {
+      debugPrint('Error fetching my Prisma user ID: $e');
+      return null;
+    }
+  }
+
   // ─── Conversations ────────────────────────────────────────────────────────
 
   /// Fetch all conversations for the current homeowner.
@@ -35,6 +52,17 @@ class MessagesService {
     } on ApiException catch (e) {
       debugPrint('Error fetching conversations: ${e.message}');
       return [];
+    }
+  }
+
+  /// Get or create a conversation for a specific job.
+  Future<ChatModel?> getOrCreateConversation(String jobId) async {
+    try {
+      final data = await _api.post('/chat/conversations/$jobId') as Map<String, dynamic>;
+      return ChatModel.fromMap(data);
+    } on ApiException catch (e) {
+      debugPrint('Error getting/creating conversation: ${e.message}');
+      return null;
     }
   }
 
@@ -112,7 +140,9 @@ class MessagesService {
   /// Call [unsubscribe] when leaving the chat screen.
   void subscribeToMessages({
     required String conversationId,
+    required String currentUserId,
     required void Function(MessageModel message) onMessage,
+    required void Function(bool isTyping) onTyping,
   }) {
     // Unsubscribe from any previous channel first
     unsubscribe();
@@ -137,7 +167,36 @@ class MessagesService {
             }
           },
         )
-        .subscribe();
+        .onPresenceSync((payload) {
+          final presenceState = _activeChannel?.presenceState();
+          if (presenceState != null) {
+            bool typing = false;
+            for (final state in presenceState) {
+              for (final presence in state.presences) {
+                final payload = presence.payload;
+                if (payload['user_id'] != currentUserId && payload['typing'] == true) {
+                  typing = true;
+                }
+              }
+            }
+            onTyping(typing);
+          }
+        })
+        .subscribe((status, [error]) async {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            await _activeChannel?.track({'user_id': currentUserId, 'typing': false});
+          }
+        });
+  }
+
+  Future<void> updateTypingStatus(String currentUserId, bool isTyping) async {
+    if (_activeChannel != null) {
+      try {
+        await _activeChannel!.track({'user_id': currentUserId, 'typing': isTyping});
+      } catch (e) {
+        debugPrint('Error updating typing status: $e');
+      }
+    }
   }
 
   /// Unsubscribe from the active Realtime channel.

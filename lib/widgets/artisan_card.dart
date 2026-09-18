@@ -8,6 +8,9 @@ class ArtisanCard extends StatelessWidget {
   final String profession; // first category name or business name
   final int jobsCompleted;
   final double rating;
+  final double? width;
+  final VoidCallback? onTap;
+  final bool isVerified;
 
   const ArtisanCard({
     super.key,
@@ -16,13 +19,18 @@ class ArtisanCard extends StatelessWidget {
     required this.profession,
     required this.jobsCompleted,
     required this.rating,
+    this.width = 280,
+    this.onTap,
+    this.isVerified = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 280,
-      margin: const EdgeInsets.only(right: 16),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: width,
+        margin: const EdgeInsets.only(right: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -50,29 +58,50 @@ class ArtisanCard extends StatelessWidget {
                         width: 48,
                         height: 48,
                         fit: BoxFit.cover,
-                        errorBuilder: (ctx, error, trace) => const Icon(Icons.person, size: 48),
+                        errorBuilder: (ctx, error, trace) => Container(
+                          width: 48, height: 48, color: Colors.grey[200],
+                          child: const Icon(Icons.person, size: 32, color: Colors.grey)),
                       )
-                    : Image.asset(
-                        imagePath,
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                      ),
+                    : (imagePath.contains('placeholder') 
+                        ? Container(
+                            width: 48, height: 48, color: Colors.grey[200],
+                            child: const Icon(Icons.person, size: 32, color: Colors.grey))
+                        : Image.asset(
+                            imagePath,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, error, trace) => Container(
+                              width: 48, height: 48, color: Colors.grey[200],
+                              child: const Icon(Icons.person, size: 32, color: Colors.grey)),
+                          )),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.verified,
+                          color: isVerified ? Colors.blue : Colors.orange,
+                          size: 14,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -154,6 +183,6 @@ class ArtisanCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }
