@@ -36,15 +36,16 @@ const Nav = () => {
 
   return (
     <>
-      <nav className="bg-black relative z-50">
+      <nav className="bg-black relative z-50 pt-1.5 md:pt-2 pb-1 md:pb-1.5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center min-h-[64px] md:min-h-[70px]">
             <div className="flex items-center">
               <div className="flex items-center space-x-2">
                 <img
                   src="/logo.png"
                   alt="Skill Pay"
-                  className="h-12 w-12 md:h-10 md:w-10"
+                  style={{ width: "135px" }}
+                  className="object-contain"
                 />
               </div>
             </div>
@@ -67,7 +68,7 @@ const Nav = () => {
               <button className="text-gray-400 hover:text-white transition-colors">
                 Login
               </button>
-              <button className="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+              <button className="bg-yellow-400 text-gray-900 font-semibold px-6 py-2.5 rounded-lg hover:bg-yellow-300 transition-colors">
                 Join SkillPay
               </button>
             </div>
@@ -121,7 +122,7 @@ const Nav = () => {
             onClick={closeMobileMenu}
           />
           {/* Menu */}
-          <div className="fixed inset-x-0 top-16 bg-black z-50 md:hidden border-t border-gray-800">
+          <div className="fixed inset-x-0 top-18 bg-black z-50 md:hidden border-t border-gray-800">
             <div className="px-4 pt-4 pb-6 space-y-1">
               {links.map((link) => (
                 <a
@@ -144,7 +145,7 @@ const Nav = () => {
                 </button>
                 <button
                   onClick={closeMobileMenu}
-                  className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  className="w-full bg-yellow-400 text-gray-900 font-semibold px-3 py-2.5 rounded-lg hover:bg-yellow-300 transition-colors"
                 >
                   Join SkillPay
                 </button>

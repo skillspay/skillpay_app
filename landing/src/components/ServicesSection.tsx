@@ -18,7 +18,7 @@ const categories = [
   'Appliances',
   'Remodeling',
   'Roofing',
-  'Doors',
+  'Masseuse',
 ]
 
 export default function ServicesSection() {
@@ -54,7 +54,7 @@ export default function ServicesSection() {
 
           <div className="text-gray-500 text-sm leading-relaxed max-w-xl">
             <p>
-              Lorem ipsum dolor sit amet consectetur. Faucibus morbi pellentesque vitae et. Eget dictum condimentum aliquam risus.
+              From routine repairs and seasonal property maintenance to major renovations and commercial facility upgrades, SkillPay connects you directly with top-tier professionals ready to get the job done right.
             </p>
           </div>
         </div>
@@ -72,41 +72,55 @@ export default function ServicesSection() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-gray-100 rounded-2xl p-6 md:p-8 space-y-4">
-            <h3 className="text-2xl font-semibold text-gray-900">
-              For professional
-              <br />
-              skilled workers
-            </h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Lorem ipsum dolor sit amet consectetur. Curabitur ac tortor in mattis.
-              Convallis imperdiet magna tincidunt in eleifend. Cras.
-            </p>
-            <button className="text-sm font-semibold text-gray-900 inline-flex items-center gap-2">
-              Register now
-              <span aria-hidden>→</span>
-            </button>
-            <div className="rounded-xl overflow-hidden mt-2">
-              <img src="/hero3.jpg" alt="Professional worker" className="w-full h-48 object-cover" />
+          <div className="bg-gray-100 rounded-2xl p-6 md:p-8 flex flex-col justify-between">
+            <div className="space-y-4">
+              <h3 className="text-2xl font-semibold text-gray-900">
+                For professional
+                <br />
+                skilled workers
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Expand your reach, discover verified job opportunities near you, build your reputation, and receive guaranteed on-time payments through our protected escrow system.
+              </p>
+              <div>
+                <button className="text-sm font-semibold text-gray-900 inline-flex items-center gap-2">
+                  Register now
+                  <span aria-hidden>→</span>
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl overflow-hidden mt-6">
+              <img
+                src="/hero3.jpg"
+                alt="Professional worker"
+                className="w-full h-72 sm:h-80 md:h-96 object-cover object-top"
+              />
             </div>
           </div>
 
-          <div className="bg-yellow-400 rounded-2xl p-6 md:p-8 space-y-4">
-            <h3 className="text-2xl font-semibold text-gray-900">
-              For homeowners
-              <br />
-              and companies
-            </h3>
-            <p className="text-sm text-gray-800 leading-relaxed">
-              Lorem ipsum dolor sit amet consectetur. Curabitur ac tortor in mattis.
-              Convallis imperdiet magna tincidunt in eleifend. Cras.
-            </p>
-            <button className="text-sm font-semibold text-gray-900 inline-flex items-center gap-2">
-              Get Started
-              <span aria-hidden>→</span>
-            </button>
-            <div className="rounded-xl overflow-hidden mt-2">
-              <img src="/hero2.jpg" alt="Homeowner working" className="w-full h-48 object-cover" />
+          <div className="bg-yellow-400 rounded-2xl p-6 md:p-8 flex flex-col justify-between">
+            <div className="space-y-4">
+              <h3 className="text-2xl font-semibold text-gray-900">
+                For homeowners
+                <br />
+                and companies
+              </h3>
+              <p className="text-sm text-gray-800 leading-relaxed">
+                Find and hire insured, pre-screened artisans for urgent repairs or planned projects with transparent pricing, live tracking, and guaranteed customer satisfaction.
+              </p>
+              <div>
+                <button className="text-sm font-semibold text-gray-900 inline-flex items-center gap-2">
+                  Get Started
+                  <span aria-hidden>→</span>
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl overflow-hidden mt-6">
+              <img
+                src="/masseuse.jpg"
+                alt="Homeowner working"
+                className="w-full h-72 sm:h-80 md:h-96 object-cover object-top"
+              />
             </div>
           </div>
         </div>

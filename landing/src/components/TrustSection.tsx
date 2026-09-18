@@ -1,5 +1,5 @@
 const trustPills = [
-  "Lisenced technicians",
+  "Licensed technicians",
   "24/7 emergency service",
   "No hidden costs",
 ]
@@ -14,19 +14,19 @@ const stats = [
 const featureList = [
   {
     title: "Job Tracking",
-    body: "Dedicated to providing high-quality, reliable transfer services at prices that won’t break the bank.",
+    body: "Monitor project milestones, technician arrival times, and task completion status in real time.",
   },
   {
     title: "Repair History",
-    body: "Stay in control every step of the way with our Real‑Time Tracking feature.",
+    body: "Access digital logs, high-resolution before-and-after photos, and itemized receipts for every service.",
   },
   {
     title: "Payments",
-    body: "Our dedicated customer support team is available 24/7 to assist you with any questions or issues.",
+    body: "Protected milestone escrow ensures funds are only disbursed once you inspect and approve the completed job.",
   },
   {
     title: "Insurance & Guarantees",
-    body: "Whether your customers prefer credit cards, mobile wallets, bank transfers, or cash, we’ve got you covered.",
+    body: "Rest easy knowing jobs are covered with on-site insurance protection and our 100% SkillPay Guarantee.",
   },
 ]
 
@@ -134,12 +134,12 @@ export default function TrustSection() {
           </div>
 
           <div className="flex justify-center lg:justify-end">
-            <div className="bg-gray-100 rounded-2xl p-8 md:p-10 w-full max-w-xl flex items-center justify-center">
+            <div className="rounded-2xl p-8 md:p-10 w-full max-w-xl flex items-center justify-center">
               <div className="w-full max-w-[320px]">
                 <div className="rounded-[2.6rem] bg-gray-900 p-2 shadow-2xl">
                   <div className="rounded-[2.2rem] overflow-hidden bg-black aspect-[9/19]">
                     <img
-                      src="/hero1.jpg"
+                      src="/hero2.jpg"
                       alt="SkillPay app preview"
                       className="w-full h-full object-cover"
                     />

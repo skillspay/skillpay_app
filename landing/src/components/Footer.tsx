@@ -102,10 +102,10 @@ export default function Footer() {
           <FooterColumn
             title="Support"
             links={[
-              "Terms of sevice",
+              "Terms of service",
               "Privacy policy",
               "Artisan terms of service",
-              "Cokie policy",
+              "Cookie policy",
               "Others",
             ]}
           />

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'withdraw_modal.dart';
+import 'notifications_screen.dart';
 import '../services/jobs_service.dart';
 import '../services/wallet_service.dart';
 import '../services/artisan_profile_service.dart';
@@ -147,16 +148,24 @@ class _HomeTabState extends State<HomeTab> {
                         ),
                       ],
                     ),
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(25),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.notifications_none,
-                        color: Colors.white,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                        );
+                      },
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(25),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.notifications_none,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ],

@@ -9,7 +9,7 @@ type ExperienceCard = {
 const cards: ExperienceCard[] = [
   {
     title: 'Hire trusted & vetted workers instantly',
-    body: 'Lorem ipsum dolor sit amet consectetur. Scelerisque cursus in nunc in mi eget. Condimentum dui laoreet tincidunt amet.',
+    body: 'Connect with thoroughly background-checked, verified artisans and technicians ready to tackle your tasks with guaranteed quality and safety.',
     icon: (
       <svg
         width="44"
@@ -40,7 +40,7 @@ const cards: ExperienceCard[] = [
   },
   {
     title: 'Save time through simplified hiring',
-    body: 'Lorem ipsum dolor sit amet consectetur. Scelerisque cursus in nunc in mi eget. Condimentum dui laoreet tincidunt amet.',
+    body: 'Post your job in minutes, compare upfront estimates, and schedule top-rated pros on your own terms without endless phone calls or guesswork.',
     icon: (
       <svg
         width="44"
@@ -79,7 +79,7 @@ const cards: ExperienceCard[] = [
   },
   {
     title: 'Manage and reduce risk',
-    body: 'Lorem ipsum dolor sit amet consectetur. Scelerisque cursus in nunc in mi eget. Condimentum dui laoreet tincidunt amet.',
+    body: 'Enjoy complete peace of mind with secure milestone escrow payments, on-the-job insurance protection, and our dependable SkillPay Guarantee.',
     icon: (
       <svg
         width="44"

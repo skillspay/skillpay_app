@@ -44,21 +44,21 @@ export default function TestimonialsFaqSection() {
     () => [
       {
         quote:
-          "A wonderful experience! They knew what they were doing and were incredibly knowledgeable throughout the process.",
-        name: "John McConnor",
-        title: "Senior Marketing Manager",
+          "Finding a dependable electrician used to take days of asking around. With SkillPay, I booked a certified technician within minutes, and the work was exceptional.",
+        name: "Sarah Jenkins",
+        title: "Homeowner",
       },
       {
         quote:
-          "A wonderful experience! They knew what they were doing and were incredibly knowledgeable throughout the process.",
-        name: "John McConnor",
-        title: "Senior Marketing Manager",
+          "SkillPay has streamlined facility maintenance across our commercial properties. Transparent milestones and vetted pros give our management team total peace of mind.",
+        name: "David Adeleke",
+        title: "Facility Operations Lead",
       },
       {
         quote:
-          "A wonderful experience! They knew what they were doing and were incredibly knowledgeable throughout the process.",
-        name: "John McConnor",
-        title: "Senior Marketing Manager",
+          "As an independent HVAC specialist, SkillPay transformed my business. I receive qualified job requests and never have to worry about unpaid invoices thanks to escrow.",
+        name: "Marcus Vance",
+        title: "Certified HVAC Specialist",
       },
     ],
     []

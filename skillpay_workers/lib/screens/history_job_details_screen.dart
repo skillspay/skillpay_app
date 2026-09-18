@@ -18,21 +18,21 @@ class HistoryJobDetailsScreen extends StatelessWidget {
   void _showCompletionModal(BuildContext context) {
     showDialog(
       context: context,
-      barrierDismissible: true, // Allow tapping outside to dismiss
-      builder: (BuildContext context) {
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
           elevation: 0,
           backgroundColor: Colors.transparent,
-          child: _buildConfirmCompletionModal(context),
+          child: _buildConfirmCompletionModal(context, dialogContext),
         );
       },
     );
   }
 
-  Widget _buildConfirmCompletionModal(BuildContext context) {
+  Widget _buildConfirmCompletionModal(BuildContext screenContext, BuildContext dialogContext) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -47,7 +47,7 @@ class HistoryJobDetailsScreen extends StatelessWidget {
           Align(
             alignment: Alignment.topRight,
             child: GestureDetector(
-              onTap: () => Navigator.pop(context),
+              onTap: () => Navigator.pop(dialogContext),
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
@@ -112,7 +112,7 @@ class HistoryJobDetailsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(dialogContext),
                     child: const Text(
                       'Cancel',
                       style: TextStyle(
@@ -133,16 +133,16 @@ class HistoryJobDetailsScreen extends StatelessWidget {
                   ),
                   child: TextButton(
                     onPressed: () async {
-                      Navigator.pop(context); // Close modal
+                      Navigator.pop(dialogContext); // Close modal
                       try {
                         await BookingsService().completeJob(booking.id);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Job marked as completed! Notification sent to customer.')));
-                          Navigator.pop(context, true);
+                        if (screenContext.mounted) {
+                          ScaffoldMessenger.of(screenContext).showSnackBar(const SnackBar(content: Text('Job marked as completed! Notification sent to customer.')));
+                          Navigator.pop(screenContext, true);
                         }
                       } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to complete job: $e')));
+                        if (screenContext.mounted) {
+                          ScaffoldMessenger.of(screenContext).showSnackBar(SnackBar(content: Text('Failed to complete job: $e')));
                         }
                       }
                     },

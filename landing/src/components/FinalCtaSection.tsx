@@ -72,8 +72,8 @@ export default function FinalCtaSection() {
                 next project.
               </h2>
               <p className="mt-6 text-gray-900/80 max-w-md leading-relaxed">
-                Lorem ipsum dolor sit amet consectetur. Curabitur ac tortor in
-                mattis. Convallis imperdiet magna tincidunt in eleifend. Cras.
+                Download the SkillPay app to instantly find top-rated artisans,
+                manage projects, and make secure milestone payments right from your phone.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
