@@ -1,13 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApplicationStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ChatGateway } from './chat.gateway';
 
 @Injectable()
 export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    @Inject(forwardRef(() => ChatGateway))
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   // ─── Get or create conversation ───────────────────────────────────────────
@@ -165,6 +168,9 @@ export class ChatService {
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
+
+    // Broadcast instant message to WebSocket clients in this conversation room
+    this.chatGateway.broadcastNewMessage(conversationId, msg);
 
     // Notify the other party
     try {

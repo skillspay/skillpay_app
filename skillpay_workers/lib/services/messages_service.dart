@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'api_client.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -8,12 +9,50 @@ import '../models/message_model.dart';
 /// Chat service for the Workers app.
 ///
 /// REST  → NestJS API (conversation list, history, send)
-/// Realtime → Supabase channel (live incoming messages)
+/// Realtime → Direct WebSocket Gateway (/chat)
 class MessagesService {
   final _api = ApiClient.instance;
-  final _supabase = Supabase.instance.client;
 
-  RealtimeChannel? _activeChannel;
+  io.Socket? _socket;
+  String? _currentConversationId;
+
+  String get _socketUrl {
+    final url = dotenv.env['API_URL'] ?? 'https://backend.skillspays.com/api/v1';
+    final uri = Uri.parse(url);
+    final baseUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+    return '$baseUrl/chat';
+  }
+
+  void _initSocket() {
+    if (_socket != null) return;
+    try {
+      _socket = io.io(
+        _socketUrl,
+        io.OptionBuilder()
+            .setTransports(['websocket', 'polling'])
+            .enableAutoConnect()
+            .enableReconnection()
+            .build(),
+      );
+
+      _socket?.onConnect((_) {
+        debugPrint('Workers Chat WebSocket connected to $_socketUrl');
+        if (_currentConversationId != null) {
+          _socket?.emit('join_conversation', _currentConversationId);
+        }
+      });
+
+      _socket?.onDisconnect((_) {
+        debugPrint('Workers Chat WebSocket disconnected');
+      });
+
+      _socket?.onError((err) {
+        debugPrint('Workers Chat WebSocket error: $err');
+      });
+    } catch (e) {
+      debugPrint('Error initializing workers chat socket: $e');
+    }
+  }
 
   // ─── User Identity ────────────────────────────────────────────────────────
   
@@ -104,7 +143,7 @@ class MessagesService {
     }
   }
 
-  // ─── Realtime ─────────────────────────────────────────────────────────────
+  // ─── Direct WebSocket Realtime ───────────────────────────────────────────
 
   void subscribeToMessages({
     required String conversationId,
@@ -113,63 +152,49 @@ class MessagesService {
     required void Function(bool isTyping) onTyping,
   }) {
     unsubscribe();
-    _activeChannel = _supabase
-        .channel('messages:$conversationId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'conversation_id',
-            value: conversationId,
-          ),
-          callback: (payload) {
-            try {
-              final newRecord = payload.newRecord as Map<String, dynamic>;
-              onMessage(MessageModel.fromMap(newRecord));
-            } catch (e) {
-              debugPrint('Realtime parse error: $e');
-            }
-          },
-        )
-        .onPresenceSync((payload) {
-          final presenceState = _activeChannel?.presenceState();
-          if (presenceState != null) {
-            bool typing = false;
-            for (final state in presenceState) {
-              for (final presence in state.presences) {
-                final payload = presence.payload;
-                if (payload['user_id'] != currentUserId && payload['typing'] == true) {
-                  typing = true;
-                }
-              }
-            }
-            onTyping(typing);
-          }
-        })
-        .subscribe((status, [error]) async {
-          if (status == RealtimeSubscribeStatus.subscribed) {
-            await _activeChannel?.track({'user_id': currentUserId, 'typing': false});
-          }
-        });
+    _currentConversationId = conversationId;
+    _initSocket();
+
+    if (_socket?.connected == true) {
+      _socket?.emit('join_conversation', conversationId);
+    }
+
+    _socket?.on('new_message', (data) {
+      try {
+        final map = Map<String, dynamic>.from(data as Map);
+        onMessage(MessageModel.fromMap(map));
+      } catch (e) {
+        debugPrint('Workers WebSocket new_message parse error: $e');
+      }
+    });
+
+    _socket?.on('typing', (data) {
+      try {
+        final map = Map<String, dynamic>.from(data as Map);
+        if (map['userId'] != currentUserId) {
+          onTyping(map['isTyping'] == true);
+        }
+      } catch (_) {}
+    });
   }
 
-  Future<void> updateTypingStatus(String currentUserId, bool isTyping) async {
-    if (_activeChannel != null) {
-      try {
-        await _activeChannel!.track({'user_id': currentUserId, 'typing': isTyping});
-      } catch (e) {
-        debugPrint('Error updating typing status: $e');
-      }
+  void updateTypingStatus(String currentUserId, bool isTyping) {
+    if (_currentConversationId != null && _socket?.connected == true) {
+      _socket?.emit('typing', {
+        'conversationId': _currentConversationId,
+        'userId': currentUserId,
+        'isTyping': isTyping,
+      });
     }
   }
 
   void unsubscribe() {
-    if (_activeChannel != null) {
-      _supabase.removeChannel(_activeChannel!);
-      _activeChannel = null;
+    if (_currentConversationId != null) {
+      _socket?.emit('leave_conversation', _currentConversationId);
+      _currentConversationId = null;
     }
+    _socket?.off('new_message');
+    _socket?.off('typing');
   }
 
   Future<void> markConversationAsSeen(String conversationId) async {
