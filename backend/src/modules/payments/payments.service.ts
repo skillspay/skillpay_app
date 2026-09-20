@@ -26,45 +26,134 @@ export class PaymentsService {
 
   // ─── Stripe Integration ──────────────────────────────────────────────────────
 
-  async createStripePaymentIntent(bookingId: string) {
+  async createStripePaymentIntent(data: {
+    bookingId: string;
+    amount?: number;
+  }) {
     const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: { application: true },
+      where: { id: data.bookingId },
+      include: { application: true, job: true },
     });
 
     if (!booking) {
-      throw new NotFoundException(`Booking ${bookingId} not found`);
+      throw new NotFoundException(`Booking ${data.bookingId} not found`);
     }
 
-    const price = Number(booking.application.price);
+    const price = data.amount && data.amount > 0
+      ? Number(data.amount)
+      : (booking.application?.price ? Number(booking.application.price) : Number(booking.job?.budget ?? 0));
+
+    if (price <= 0) {
+      throw new BadRequestException('Payment amount must be greater than zero');
+    }
+
     const amountInCents = Math.round(price * 100);
 
     // Create payment intent on Stripe
     const intent = await this.stripe.paymentIntents.create({
       amount: amountInCents,
       currency: 'usd',
-      metadata: { bookingId },
-    });
-
-    // Save payment record
-    const payment = await this.prisma.payment.create({
-      data: {
-        bookingId,
-        homeownerId: booking.homeownerId,
+      metadata: {
+        bookingId: booking.id,
+        jobId: booking.jobId,
         artisanId: booking.artisanId,
-        reference: uuidv4(),
-        amount: price,
-        gateway: PaymentGateway.STRIPE,
-        paymentMethod: PaymentMethod.CARD,
-        gatewayRef: intent.id,
-        status: 'PENDING',
+        homeownerId: booking.homeownerId,
       },
     });
+
+    // Check if payment already exists for this booking
+    const existing = await this.prisma.payment.findUnique({
+      where: { bookingId: booking.id },
+    });
+
+    let payment;
+    if (existing) {
+      payment = await this.prisma.payment.update({
+        where: { id: existing.id },
+        data: {
+          amount: price,
+          gateway: PaymentGateway.STRIPE,
+          paymentMethod: PaymentMethod.CARD,
+          gatewayRef: intent.id,
+          status: 'PENDING',
+        },
+      });
+    } else {
+      payment = await this.prisma.payment.create({
+        data: {
+          bookingId: booking.id,
+          homeownerId: booking.homeownerId,
+          artisanId: booking.artisanId,
+          reference: uuidv4(),
+          amount: price,
+          gateway: PaymentGateway.STRIPE,
+          paymentMethod: PaymentMethod.CARD,
+          gatewayRef: intent.id,
+          status: 'PENDING',
+        },
+      });
+    }
 
     return {
       paymentId: payment.id,
       clientSecret: intent.client_secret,
       publishableKey: this.config.get<string>('stripe.publishableKey'),
+      amount: price,
+      currency: 'usd',
+    };
+  }
+
+  getStripeConfig() {
+    const publishableKey = this.config.get<string>('stripe.publishableKey') || '';
+    const secretKey = this.config.get<string>('stripe.secretKey') || '';
+    const isConfigured = secretKey.length > 0 && !secretKey.includes('placeholder');
+    return {
+      publishableKey,
+      isConfigured,
+      mode: publishableKey.startsWith('pk_live') ? 'live' : 'test',
+    };
+  }
+
+  async refundStripePayment(paymentId: string, reason?: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment ${paymentId} not found`);
+    }
+
+    if (payment.status === 'REFUNDED') {
+      throw new BadRequestException('Payment is already refunded');
+    }
+
+    if (payment.gateway !== PaymentGateway.STRIPE || !payment.gatewayRef) {
+      throw new BadRequestException('Payment is not a Stripe transaction with valid gatewayRef');
+    }
+
+    let refund: Stripe.Refund;
+    try {
+      refund = await this.stripe.refunds.create({
+        payment_intent: payment.gatewayRef,
+        reason: (reason as any) || 'requested_by_customer',
+      });
+    } catch (err: any) {
+      this.logger.error(`Stripe refund failed: ${err.message}`);
+      throw new BadRequestException(`Stripe refund error: ${err.message}`);
+    }
+
+    await this.prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'REFUNDED' },
+    });
+
+    this.logger.log(`Payment refunded: ${paymentId} (Stripe Refund ${refund.id})`);
+
+    return {
+      success: true,
+      refundId: refund.id,
+      status: refund.status,
+      paymentId,
     };
   }
 
@@ -79,9 +168,34 @@ export class PaymentsService {
       throw new BadRequestException(`Webhook Error: ${err.message}`);
     }
 
-    if (event.type === 'payment_intent.succeeded') {
-      const intent = event.data.object as Stripe.PaymentIntent;
-      await this.completePayment(intent.id);
+    switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        await this.completePayment(intent.id);
+        break;
+      }
+      case 'payment_intent.payment_failed': {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        await this.prisma.payment.updateMany({
+          where: { gatewayRef: intent.id },
+          data: { status: 'FAILED' },
+        });
+        this.logger.warn(`PaymentIntent failed: ${intent.id}`);
+        break;
+      }
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        if (charge.payment_intent) {
+          const intentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent.id;
+          await this.prisma.payment.updateMany({
+            where: { gatewayRef: intentId },
+            data: { status: 'REFUNDED' },
+          });
+        }
+        break;
+      }
+      default:
+        this.logger.log(`Unhandled Stripe event type: ${event.type}`);
     }
 
     return { received: true };

@@ -4,31 +4,48 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, CreditCard, Award, Search, Filter, GripHorizontal, Plus, MoreVertical, ChevronDown } from 'lucide-react';
+import { DollarSign, CreditCard, Award, Search, Filter, GripHorizontal, Plus, MoreVertical, ChevronDown, ExternalLink, RotateCcw } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 export default function PaymentsControl() {
   const [payments, setPayments] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refundingId, setRefundingId] = useState<string | null>(null);
+
+  const loadData = async () => {
+    try {
+      const [payRes, statRes] = await Promise.all([
+        api.payments.list(),
+        api.payments.getStats(),
+      ]);
+      setPayments(payRes || []);
+      setStats(statRes);
+    } catch (err) {
+      console.error('Failed to load payments data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [payRes, statRes] = await Promise.all([
-          api.payments.list(),
-          api.payments.getStats(),
-        ]);
-        setPayments(payRes || []);
-        setStats(statRes);
-      } catch (err) {
-        console.error('Failed to load payments data', err);
-      } finally {
-        setLoading(false);
-      }
-    }
     loadData();
   }, []);
+
+  const handleRefund = async (paymentId: string) => {
+    if (!confirm('Are you sure you want to issue a full refund for this Stripe payment? This will return the funds to the customer.')) {
+      return;
+    }
+    setRefundingId(paymentId);
+    try {
+      await api.payments.refund(paymentId);
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Refund failed');
+    } finally {
+      setRefundingId(null);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -147,7 +164,13 @@ export default function PaymentsControl() {
                         {p.homeowner?.fullName || '—'}
                       </TableCell>
                       <TableCell>
-                        <span className="px-2 py-0.5 rounded border border-gray-300 text-[10px] font-bold text-gray-600 uppercase">{p.gateway}</span>
+                        {p.gateway === 'STRIPE' ? (
+                          <span className="px-2 py-0.5 rounded border border-indigo-200 bg-indigo-50 text-[10px] font-bold text-indigo-700 uppercase">Stripe</span>
+                        ) : p.gateway === 'PAYPAL' ? (
+                          <span className="px-2 py-0.5 rounded border border-blue-200 bg-blue-50 text-[10px] font-bold text-blue-700 uppercase">PayPal</span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded border border-gray-300 text-[10px] font-bold text-gray-600 uppercase">{p.gateway}</span>
+                        )}
                       </TableCell>
                       <TableCell className="font-extrabold text-[13px] text-gray-900">${Number(p.amount).toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(p.status)}</TableCell>
@@ -155,9 +178,33 @@ export default function PaymentsControl() {
                         {new Date(p.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        <button className="text-gray-400 hover:text-gray-600">
-                          <MoreVertical size={16} />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {p.gateway === 'STRIPE' && p.gatewayRef && (
+                            <a
+                              href={`https://dashboard.stripe.com/payments/${p.gatewayRef}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="View in Stripe Dashboard"
+                              className="text-gray-400 hover:text-indigo-600 p-1"
+                            >
+                              <ExternalLink size={14} />
+                            </a>
+                          )}
+                          {p.gateway === 'STRIPE' && p.status === 'COMPLETED' && (
+                            <button
+                              onClick={() => handleRefund(p.id)}
+                              disabled={refundingId === p.id}
+                              title="Issue Stripe Refund"
+                              className="px-2 py-1 text-[11px] font-semibold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-md transition-colors flex items-center gap-1"
+                            >
+                              <RotateCcw size={11} className={refundingId === p.id ? 'animate-spin' : ''} />
+                              {refundingId === p.id ? 'Refunding...' : 'Refund'}
+                            </button>
+                          )}
+                          <button className="text-gray-400 hover:text-gray-600 p-1">
+                            <MoreVertical size={15} />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

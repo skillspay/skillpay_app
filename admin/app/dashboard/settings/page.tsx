@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Shield, User, Key, AlertTriangle } from 'lucide-react';
+import { Shield, User, Key, AlertTriangle, CreditCard, Copy, Check } from 'lucide-react';
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const [commission, setCommission] = useState('');
   const [comResult, setComResult] = useState<{ success: boolean; message: string } | null>(null);
   const [comLoading, setComLoading] = useState(false);
+  const [stripeConfig, setStripeConfig] = useState<any>(null);
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -33,8 +35,16 @@ export default function SettingsPage() {
     }
     async function loadSettings() {
       try {
-        const data = await api.settings.getCommission();
-        setCommission(data.admin_commission_percentage?.toString() || '10');
+        const [commData, stripeData] = await Promise.allSettled([
+          api.settings.getCommission(),
+          api.payments.getStripeConfig(),
+        ]);
+        if (commData.status === 'fulfilled') {
+          setCommission(commData.value.admin_commission_percentage?.toString() || '10');
+        }
+        if (stripeData.status === 'fulfilled') {
+          setStripeConfig(stripeData.value);
+        }
       } catch (err) {
         console.error('Failed to load settings', err);
       }
@@ -239,6 +249,68 @@ export default function SettingsPage() {
               {comLoading ? 'Saving...' : 'Save Settings'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Stripe Payment Gateway Configuration */}
+      <Card className="p-6 border border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm">
+        <CardHeader className="px-0 pt-0 pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <CreditCard size={20} className="text-indigo-600" />
+              Stripe Payment Gateway
+            </CardTitle>
+            {stripeConfig?.isConfigured ? (
+              <Badge className={stripeConfig?.mode === 'live' ? 'bg-green-100 text-green-800 font-bold border-none' : 'bg-indigo-100 text-indigo-800 font-bold border-none'}>
+                {stripeConfig?.mode === 'live' ? 'LIVE MODE' : 'TEST MODE'}
+              </Badge>
+            ) : (
+              <Badge className="bg-amber-100 text-amber-800 font-bold border-none">
+                CONFIG REQUIRED
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="px-0 pb-0 space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Publishable Key</label>
+            <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl">
+              <code className="text-xs font-mono text-gray-800">
+                {stripeConfig?.publishableKey
+                  ? `${stripeConfig.publishableKey.substring(0, 14)}...`
+                  : 'sk_test_... / pk_test_... (Check backend environment variables)'}
+              </code>
+              <Badge variant="outline" className="text-[10px] uppercase font-semibold">
+                {stripeConfig?.isConfigured ? 'Connected' : 'Missing Key'}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Stripe Webhook Endpoint</label>
+            <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl">
+              <code className="text-xs font-mono text-gray-800 truncate mr-2">
+                {(process.env.NEXT_PUBLIC_API_URL || 'https://backend.skillspays.com/api/v1').replace(/\/$/, '')}/payments/stripe/webhook
+              </code>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-xs shrink-0"
+                onClick={() => {
+                  const url = `${(process.env.NEXT_PUBLIC_API_URL || 'https://backend.skillspays.com/api/v1').replace(/\/$/, '')}/payments/stripe/webhook`;
+                  navigator.clipboard.writeText(url);
+                  setCopiedWebhook(true);
+                  setTimeout(() => setCopiedWebhook(false), 2000);
+                }}
+              >
+                {copiedWebhook ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                {copiedWebhook ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 pt-1">
+              Add this endpoint in your <a href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noreferrer" className="text-indigo-600 font-semibold underline">Stripe Dashboard &rarr; Webhooks</a>. Listen for <code>payment_intent.succeeded</code>, <code>payment_intent.payment_failed</code>, and <code>charge.refunded</code>.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

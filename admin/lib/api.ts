@@ -106,6 +106,12 @@ export const api = {
   payments: {
     list: () => request('/admin/payments'),
     getStats: () => request('/admin/payments/stats'),
+    getStripeConfig: () => request('/payments/stripe/config'),
+    refund: (paymentId: string, reason?: string) =>
+      request('/payments/stripe/refund', {
+        method: 'POST',
+        body: JSON.stringify({ paymentId, reason }),
+      }),
   },
   reports: {
     list: () => request('/admin/reports'),
