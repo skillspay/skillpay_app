@@ -21,7 +21,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  Future<void> _navigateToAuth(BuildContext context, String title) async {
+  Future<void> _navigateToAuth(String title) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_onboarding', true);
 
@@ -93,44 +93,46 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 48),
-          if (titleWidget != null) titleWidget,
-          if (title != null && titleWidget == null)
+          const SizedBox(height: 24),
+          if (titleWidget != null)
+            titleWidget
+          else if (title != null)
             Text(
               title,
               style: const TextStyle(
-                fontSize: 32,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
                 height: 1.2,
               ),
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             subtitle,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               color: Colors.grey,
-              height: 1.5,
+              height: 1.4,
             ),
           ),
-          const Spacer(),
-          Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Image.asset(
-                imagePath,
-                height: 350,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 350,
-                  width: double.infinity,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.image, size: 50, color: Colors.grey),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: Icon(Icons.image, size: 50, color: Colors.grey),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -162,7 +164,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              onPressed: () => _navigateToAuth(context, 'Create Account'),
+              onPressed: () => _navigateToAuth('Create Account'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFC107), // Yellow
                 foregroundColor: Colors.black,
@@ -182,7 +184,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              onPressed: () => _navigateToAuth(context, 'Login as Artisan'),
+              onPressed: () => _navigateToAuth('Login as Artisan'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF5F5F5), // Light Grey
                 foregroundColor: Colors.black,
