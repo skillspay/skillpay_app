@@ -48,8 +48,6 @@ export class ChatService {
   // ─── List all conversations for a user ────────────────────────────────────
 
   async getConversationsForUser(userId: string) {
-    // Find conversations tied to jobs the user owns (as homeowner)
-    // or has an accepted/confirmed booking (as artisan)
     const homeowner = await this.prisma.homeowner.findUnique({
       where: { userId },
     });
@@ -62,62 +60,115 @@ export class ChatService {
         OR: [
           ...(homeowner ? [{ job: { homeownerId: homeowner.id } }] : []),
           ...(artisan
-            ? [{
-                job: {
-                  applications: {
-                    some: {
-                      artisanId: artisan.id,
-                      status: {
-                        in: [
-                          ApplicationStatus.ACCEPTED,
-                          ApplicationStatus.PENDING,
-                        ],
+            ? [
+                { job: { booking: { artisanId: artisan.id } } },
+                {
+                  job: {
+                    applications: {
+                      some: {
+                        artisanId: artisan.id,
                       },
                     },
                   },
                 },
-              }]
+              ]
             : []),
+          { messages: { some: { senderId: userId } } },
         ],
       },
       include: {
         job: {
           include: {
             homeowner: {
-              select: { id: true, fullName: true, profilePhoto: true },
+              select: { id: true, fullName: true, profilePhoto: true, userId: true },
             },
             category: { select: { id: true, name: true } },
+            booking: {
+              include: {
+                artisan: {
+                  select: { id: true, fullName: true, profilePhoto: true, userId: true },
+                },
+              },
+            },
             applications: {
               include: {
-                artisan: { select: { id: true, fullName: true, profilePhoto: true } }
+                artisan: {
+                  select: { id: true, fullName: true, profilePhoto: true, userId: true },
+                },
               },
-              take: 1,
-            }
+              orderBy: { createdAt: 'desc' },
+            },
           },
         },
         messages: {
           orderBy: { createdAt: 'desc' as const },
-          take: 1,
-          include: { sender: { select: { id: true, role: true } } },
+          take: 5,
+          include: {
+            sender: {
+              select: {
+                id: true,
+                role: true,
+                artisan: { select: { id: true, fullName: true, profilePhoto: true, userId: true } },
+                homeowner: { select: { id: true, fullName: true, profilePhoto: true, userId: true } },
+              },
+            },
+          },
         },
       },
       orderBy: { updatedAt: 'desc' as const },
     });
 
-    // Shape into a format the Flutter app expects
+    // Shape into a format both customer and workers Flutter apps expect
     return conversations.map((conv: any) => {
       const lastMsg = conv.messages?.[0];
-      const otherPartyHomeowner = conv.job?.homeowner;
-      const otherPartyArtisan = conv.job?.applications?.[0]?.artisan;
+      const jobHomeowner = conv.job?.homeowner;
+
+      // 1. Check if job has a booked artisan
+      let resolvedArtisan = conv.job?.booking?.artisan;
+
+      // 2. Or check accepted application, then any application
+      if (!resolvedArtisan && conv.job?.applications?.length > 0) {
+        const acceptedApp = conv.job.applications.find((a: any) => a.status === ApplicationStatus.ACCEPTED);
+        resolvedArtisan = acceptedApp?.artisan || conv.job.applications[0]?.artisan;
+      }
+
+      // 3. Or check sender of messages in this conversation
+      if (!resolvedArtisan && conv.messages?.length > 0) {
+        for (const msg of conv.messages) {
+          if (msg.sender?.artisan) {
+            resolvedArtisan = msg.sender.artisan;
+            break;
+          }
+        }
+      }
+
+      // Calculate unread count for current user
+      const unreadCount = conv.messages?.filter(
+        (m: any) => !m.seen && m.senderId !== userId,
+      ).length ?? 0;
 
       return {
         id: conv.id,
         jobId: conv.jobId,
         updatedAt: conv.updatedAt,
         lastMessage: lastMsg?.message ?? '',
-        unreadCount: 0, // TODO: compute with seen flag
-        homeowner: otherPartyHomeowner,
-        artisan: artisan ? { id: artisan.id } : otherPartyArtisan,
+        unreadCount,
+        homeowner: jobHomeowner
+          ? {
+              id: jobHomeowner.id,
+              fullName: jobHomeowner.fullName,
+              profilePhoto: jobHomeowner.profilePhoto,
+              userId: jobHomeowner.userId,
+            }
+          : null,
+        artisan: resolvedArtisan
+          ? {
+              id: resolvedArtisan.id,
+              fullName: resolvedArtisan.fullName,
+              profilePhoto: resolvedArtisan.profilePhoto,
+              userId: resolvedArtisan.userId,
+            }
+          : null,
         job: { title: conv.job?.title, category: conv.job?.category },
       };
     });
@@ -180,6 +231,7 @@ export class ChatService {
           job: {
             include: {
               homeowner: { select: { userId: true } },
+              booking: { include: { artisan: { select: { userId: true } } } },
               applications: {
                 where: { status: { in: ['ACCEPTED', 'PENDING'] } },
                 include: { artisan: { select: { userId: true } } },
@@ -191,8 +243,9 @@ export class ChatService {
       });
 
       if (conversation && conversation.job) {
-        const homeownerUserId = conversation.job.homeowner.userId;
-        const artisanUserId = conversation.job.applications[0]?.artisan?.userId;
+        const homeownerUserId = conversation.job.homeowner?.userId;
+        const artisanUserId = conversation.job.booking?.artisan?.userId ||
+                              conversation.job.applications[0]?.artisan?.userId;
         
         let receiverId: string | null | undefined = null;
         if (senderId === homeownerUserId) receiverId = artisanUserId;

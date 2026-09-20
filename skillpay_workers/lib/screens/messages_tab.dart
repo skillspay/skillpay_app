@@ -58,14 +58,28 @@ class _MessagesTabState extends State<MessagesTab> {
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.toLowerCase().trim();
     setState(() {
-      _filteredConversations = _conversations.where((c) {
-        final nameMatch = c.homeownerName.toLowerCase().contains(query);
-        final messageMatch = c.lastMessage.toLowerCase().contains(query);
-        return nameMatch || messageMatch;
-      }).toList();
+      if (query.isEmpty) {
+        _filteredConversations = _conversations;
+      } else {
+        _filteredConversations = _conversations.where((c) {
+          final nameMatch = c.homeownerName.toLowerCase().contains(query);
+          final messageMatch = c.lastMessage.toLowerCase().contains(query);
+          final jobMatch = c.jobTitle.toLowerCase().contains(query);
+          return nameMatch || messageMatch || jobMatch;
+        }).toList();
+      }
     });
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'H';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
   }
 
   @override
@@ -104,7 +118,7 @@ class _MessagesTabState extends State<MessagesTab> {
                 controller: _searchController,
                 decoration: const InputDecoration(
                   icon: Icon(Icons.search, color: Colors.grey),
-                  hintText: 'Search messages...',
+                  hintText: 'Search messages or jobs...',
                   hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                   border: InputBorder.none,
                 ),
@@ -167,6 +181,10 @@ class _MessagesTabState extends State<MessagesTab> {
 
   Widget _buildMessageTile(ChatModel chat) {
     final hasUnread = chat.unreadCount > 0;
+    final initials = _getInitials(chat.homeownerName);
+    final lastMsg = chat.lastMessage.isNotEmpty
+        ? chat.lastMessage
+        : (chat.jobTitle.isNotEmpty ? 'Job: ${chat.jobTitle}' : 'Tap to chat');
     
     return ListTile(
       onTap: () {
@@ -179,10 +197,11 @@ class _MessagesTabState extends State<MessagesTab> {
             builder: (context) => HistoryChatScreen(
               conversationId: chat.id,
               clientName: chat.homeownerName,
+              clientAvatarUrl: chat.homeownerAvatarUrl,
+              jobTitle: chat.jobTitle,
             ),
           ),
         ).then((_) {
-          // Refresh list on return to update read status and last message
           _fetchConversations();
         });
       },
@@ -193,18 +212,40 @@ class _MessagesTabState extends State<MessagesTab> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.grey[200],
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade400, Colors.blue.shade700],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
-              image: chat.homeownerAvatarUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(chat.homeownerAvatarUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
             ),
-            child: chat.homeownerAvatarUrl == null
-                ? const Icon(Icons.person, color: Colors.grey)
-                : null,
+            child: ClipOval(
+              child: chat.homeownerAvatarUrl != null && chat.homeownerAvatarUrl!.isNotEmpty
+                  ? Image.network(
+                      chat.homeownerAvatarUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+            ),
           ),
           if (hasUnread)
             Positioned(
@@ -225,12 +266,12 @@ class _MessagesTabState extends State<MessagesTab> {
       title: Text(
         chat.homeownerName,
         style: TextStyle(
-          fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+          fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
           fontSize: 15,
         ),
       ),
       subtitle: Text(
-        chat.lastMessage,
+        lastMsg,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(

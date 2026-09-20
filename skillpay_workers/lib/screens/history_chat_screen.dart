@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/messages_service.dart';
 import '../models/message_model.dart';
@@ -13,11 +12,15 @@ import 'package:intl/intl.dart';
 class HistoryChatScreen extends StatefulWidget {
   final String conversationId;
   final String clientName;
+  final String? clientAvatarUrl;
+  final String? jobTitle;
 
   const HistoryChatScreen({
     super.key,
     required this.conversationId,
     required this.clientName,
+    this.clientAvatarUrl,
+    this.jobTitle,
   });
 
   @override
@@ -28,6 +31,15 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
   final _messagesService = MessagesService();
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'H';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
+  }
   
   List<MessageModel> _messages = [];
   bool _isLoading = true;
@@ -275,15 +287,86 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          widget.clientName,
-          style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade400, Colors.blue.shade700],
+                ),
+              ),
+              child: ClipOval(
+                child: (widget.clientAvatarUrl != null && widget.clientAvatarUrl!.isNotEmpty)
+                    ? Image.network(
+                        widget.clientAvatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Text(
+                            _getInitials(widget.clientName),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          _getInitials(widget.clientName),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.clientName,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    _isOtherUserTyping
+                        ? 'typing...'
+                        : (widget.jobTitle?.isNotEmpty == true
+                            ? widget.jobTitle!
+                            : 'Client'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _isOtherUserTyping ? Colors.green.shade700 : Colors.grey.shade600,
+                      fontWeight: _isOtherUserTyping ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        centerTitle: true,
       ),
       body: SafeArea(
         child: Column(
