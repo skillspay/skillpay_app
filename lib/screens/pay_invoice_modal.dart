@@ -3,9 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 // import 'package:skillpay/screens/main_navigation_screen.dart'; // Navigation back to history
 
+import 'package:skillpay/services/stripe_service.dart';
+
 void showPayInvoiceModal(
   BuildContext context, {
   required double jobAmount,
+  String? bookingId,
   required VoidCallback onPaymentSuccess,
 }) {
   showModalBottomSheet(
@@ -14,6 +17,7 @@ void showPayInvoiceModal(
     backgroundColor: Colors.transparent,
     builder: (context) => _PayInvoiceModal(
       jobAmount: jobAmount,
+      bookingId: bookingId,
       onPaymentSuccess: onPaymentSuccess,
     ),
   );
@@ -21,10 +25,12 @@ void showPayInvoiceModal(
 
 class _PayInvoiceModal extends StatefulWidget {
   final double jobAmount;
+  final String? bookingId;
   final VoidCallback onPaymentSuccess;
 
   const _PayInvoiceModal({
     required this.jobAmount,
+    this.bookingId,
     required this.onPaymentSuccess,
   });
 
@@ -54,6 +60,7 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
       context,
       _amountController.text.isEmpty ? '0.00' : _amountController.text,
       widget.onPaymentSuccess,
+      bookingId: widget.bookingId,
     );
   }
 
@@ -202,13 +209,19 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
 // PAYMENT METHOD MODAL
 // -----------------------------------------------------------------------------
 
-void showPaymentMethodModal(BuildContext context, String amountStr, VoidCallback onPaymentSuccess) {
+void showPaymentMethodModal(
+  BuildContext context,
+  String amountStr,
+  VoidCallback onPaymentSuccess, {
+  String? bookingId,
+}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (context) => _PaymentMethodModal(
       amount: amountStr,
+      bookingId: bookingId,
       onPaymentSuccess: onPaymentSuccess,
     ),
   );
@@ -216,10 +229,12 @@ void showPaymentMethodModal(BuildContext context, String amountStr, VoidCallback
 
 class _PaymentMethodModal extends StatefulWidget {
   final String amount;
+  final String? bookingId;
   final VoidCallback onPaymentSuccess;
 
   const _PaymentMethodModal({
     required this.amount,
+    this.bookingId,
     required this.onPaymentSuccess,
   });
 
@@ -229,11 +244,44 @@ class _PaymentMethodModal extends StatefulWidget {
 
 class _PaymentMethodModalState extends State<_PaymentMethodModal> {
   String _selectedMethod = 'stripe';
+  bool _isProcessing = false;
 
-  void _onPay() {
-    widget.onPaymentSuccess(); // Call backend hire action here
-    Navigator.pop(context); // Close this modal
-    showPaymentSuccessModal(context, widget.amount);
+  Future<void> _onPay() async {
+    if (_isProcessing) return;
+
+    if (_selectedMethod == 'stripe' && widget.bookingId != null && widget.bookingId!.isNotEmpty) {
+      setState(() => _isProcessing = true);
+      try {
+        final success = await StripeService.instance.processPayment(
+          bookingId: widget.bookingId!,
+          amount: double.tryParse(widget.amount),
+        );
+
+        if (!mounted) return;
+
+        if (success) {
+          widget.onPaymentSuccess();
+          Navigator.pop(context);
+          showPaymentSuccessModal(context, widget.amount);
+        } else {
+          setState(() => _isProcessing = false);
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Stripe payment failed: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } else {
+      // Direct action / other method
+      widget.onPaymentSuccess();
+      Navigator.pop(context);
+      showPaymentSuccessModal(context, widget.amount);
+    }
   }
 
   @override
@@ -322,10 +370,16 @@ class _PaymentMethodModalState extends State<_PaymentMethodModal> {
           const SizedBox(height: 32),
           
           ElevatedButton.icon(
-            onPressed: _onPay,
-            icon: const Icon(Icons.lock_outline, size: 18),
+            onPressed: _isProcessing ? null : _onPay,
+            icon: _isProcessing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.lock_outline, size: 18),
             label: Text(
-              'Pay \$${widget.amount}',
+              _isProcessing ? 'Processing Payment...' : 'Pay \$${widget.amount}',
               style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: ElevatedButton.styleFrom(

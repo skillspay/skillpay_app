@@ -6,6 +6,8 @@ import 'package:skillpay/services/push_notification_service.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/splash_screen.dart';
 
+import 'package:skillpay/services/stripe_service.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -25,6 +27,11 @@ void main() async {
 
   // Initialize push notifications (requests permissions, saves FCM token via API)
   await PushNotificationService().initialize();
+
+  // Initialize Stripe
+  await StripeService.instance.initialize(
+    publishableKey: dotenv.env['STRIPE_PUBLISHABLE_KEY'],
+  );
 
   runApp(const SkillpayApp());
 }
