@@ -46,8 +46,12 @@ export class ArtisansController {
   // Flutter (customer): GET /artisans  (search)
   @Get()
   @ApiOperation({ summary: 'Search artisans' })
-  search(@Query('search') search?: string, @Query('limit') limit?: number) {
-    return this.artisansService.findNearby({ search, limit });
+  search(
+    @Query('search') search?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.artisansService.findNearby({ search, categoryId, limit });
   }
 
   // Flutter (customer): GET /artisans/:id

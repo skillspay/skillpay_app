@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'onboarding_step3_screen.dart';
+import '../services/artisan_profile_service.dart';
 
 class OnboardingStep2Screen extends StatefulWidget {
   final Map<String, dynamic> onboardingData;
@@ -11,6 +12,9 @@ class OnboardingStep2Screen extends StatefulWidget {
 }
 
 class _OnboardingStep2ScreenState extends State<OnboardingStep2Screen> {
+  final _profileService = ArtisanProfileService();
+  List<Map<String, dynamic>> _categories = [];
+  String? _selectedCategoryId;
   String? _selectedProfession;
   String? _selectedExperience;
   String? _employedStatus;
@@ -24,6 +28,18 @@ class _OnboardingStep2ScreenState extends State<OnboardingStep2Screen> {
   void initState() {
     super.initState();
     _jobTitleController.addListener(_validateForm);
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final cats = await _profileService.fetchCategories();
+      if (mounted) {
+        setState(() {
+          _categories = cats;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -94,15 +110,22 @@ class _OnboardingStep2ScreenState extends State<OnboardingStep2Screen> {
                       const SizedBox(height: 24),
                       
                       // Profession
-                      const Text('What is your profession?', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      const Text('What is your profession / service category?', style: TextStyle(color: Colors.grey, fontSize: 13)),
                       const SizedBox(height: 8),
                       _buildDropdownField(
                         value: _selectedProfession,
                         hint: 'Select profession',
-                        items: ['Plumber', 'Electrician', 'Carpenter', 'Tailor', 'Mechanic'],
+                        items: _categories.isNotEmpty
+                            ? _categories.map((c) => c['name']?.toString() ?? '').where((s) => s.isNotEmpty).toList()
+                            : ['Plumbing', 'Electrical', 'Carpentry', 'Painting'],
                         onChanged: (val) {
                           setState(() {
                             _selectedProfession = val;
+                            final match = _categories.firstWhere(
+                              (c) => c['name'] == val,
+                              orElse: () => <String, dynamic>{},
+                            );
+                            _selectedCategoryId = match['id']?.toString();
                             _validateForm();
                           });
                         },
@@ -205,6 +228,7 @@ class _OnboardingStep2ScreenState extends State<OnboardingStep2Screen> {
                     final currentData = Map<String, dynamic>.from(widget.onboardingData);
                     currentData.addAll({
                       'profession': _selectedProfession,
+                      'category_id': _selectedCategoryId,
                       'experience_years': _selectedExperience,
                       'is_employed': _employedStatus == 'Yes',
                       'job_title': _jobTitleController.text.trim(),

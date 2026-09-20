@@ -67,6 +67,15 @@ class _OnboardingStep3ScreenState extends State<OnboardingStep3Screen> {
         yearsExperience: _parseYears(data['experience_years']?.toString()),
       );
 
+      // Attach selected category
+      if (data['category_id'] != null && data['category_id'].toString().isNotEmpty) {
+        try {
+          await _profileService.addCategory(data['category_id'].toString());
+        } catch (e) {
+          debugPrint('Error attaching category in Step 3: $e');
+        }
+      }
+
       // Post the guarantor info via a dedicated endpoint (stored as metadata)
       try {
         await ApiClient.instance.post('/artisans/guarantor', body: {

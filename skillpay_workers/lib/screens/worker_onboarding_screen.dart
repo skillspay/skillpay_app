@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
+import '../services/artisan_profile_service.dart';
 import 'dashboard_screen.dart';
 import 'upload_profile_photo_screen.dart';
 
@@ -26,6 +26,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
   final PageController _pageController = PageController();
   final AuthService _authService = AuthService();
   final LocationService _locationService = LocationService();
+  final ArtisanProfileService _profileService = ArtisanProfileService();
   
   int _currentPage = 0;
   bool _isLoading = false;
@@ -39,20 +40,51 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
   bool _isLocating = false;
 
   // Step 2: Skills & Rate
-  String? _selectedCategory;
+  List<Map<String, dynamic>> _categories = [];
+  bool _isLoadingCategories = true;
+  final Set<String> _selectedCategoryIds = {};
   final TextEditingController _rateController = TextEditingController();
-  final List<Map<String, String>> _categories = [
-    {'id': 'cat_plumbing', 'name': 'Plumbing', 'icon': '🔧'},
-    {'id': 'cat_electrical', 'name': 'Electrical', 'icon': '⚡'},
-    {'id': 'cat_cleaning', 'name': 'Cleaning', 'icon': '🧹'},
-    {'id': 'cat_carpentry', 'name': 'Carpentry', 'icon': '🪚'},
-    {'id': 'cat_painting', 'name': 'Painting', 'icon': '🎨'},
-    {'id': 'cat_landscaping', 'name': 'Landscaping', 'icon': '🌱'},
-  ];
 
   // Step 3: Bio & Photo
   final TextEditingController _bioController = TextEditingController();
   bool _hasPhoto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final cats = await _profileService.fetchCategories();
+      if (mounted) {
+        setState(() {
+          _categories = cats;
+          _isLoadingCategories = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCategories = false);
+      }
+    }
+  }
+
+  String _getCategoryIcon(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('plumb')) return '🔧';
+    if (lower.contains('elect')) return '⚡';
+    if (lower.contains('clean')) return '🧹';
+    if (lower.contains('carp')) return '🪚';
+    if (lower.contains('paint')) return '🎨';
+    if (lower.contains('landscap') || lower.contains('gard')) return '🌱';
+    if (lower.contains('mass')) return '💆';
+    if (lower.contains('hair') || lower.contains('barb')) return '✂️';
+    if (lower.contains('tail') || lower.contains('fash')) return '🪡';
+    if (lower.contains('mech') || lower.contains('auto')) return '🔩';
+    return '🛠️';
+  }
 
   @override
   void dispose() {
@@ -72,8 +104,8 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
         return;
       }
     } else if (_currentPage == 1) {
-      if (_selectedCategory == null || _rateController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a category and enter your rate.')));
+      if (_selectedCategoryIds.isEmpty || _rateController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select at least one category and enter your rate.')));
         return;
       }
     }
@@ -104,8 +136,12 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
     setState(() => _isLoading = true);
 
     try {
-      if (_selectedCategory != null) {
-        await _authService.addCategory(_selectedCategory!);
+      for (final catId in _selectedCategoryIds) {
+        try {
+          await _authService.addCategory(catId);
+        } catch (e) {
+          debugPrint('Error attaching category $catId: $e');
+        }
       }
 
       final rate = double.tryParse(_rateController.text.trim());
@@ -351,41 +387,74 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
             style: GoogleFonts.outfit(fontSize: 16, color: Colors.grey[700]),
           ),
           const SizedBox(height: 32),
-          Text('Select a Category', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
+          Text('Select Your Services (one or more)', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _categories.map((cat) {
-              final isSelected = _selectedCategory == cat['id'];
-              return GestureDetector(
-                onTap: () => setState(() => _selectedCategory = cat['id']),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFFFC107) : Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: isSelected ? const Color(0xFFFFC107) : Colors.grey[300]!),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(cat['icon']!, style: const TextStyle(fontSize: 18)),
-                      const SizedBox(width: 8),
-                      Text(
-                        cat['name']!,
-                        style: GoogleFonts.outfit(
-                          fontSize: 15,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected ? Colors.black : Colors.black87,
+          if (_isLoadingCategories)
+            const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: Color(0xFFFFC107))))
+          else if (_categories.isEmpty)
+            Text('No categories available', style: GoogleFonts.outfit(color: Colors.grey))
+          else
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: _categories.map((cat) {
+                final id = cat['id']?.toString() ?? '';
+                final name = cat['name']?.toString() ?? 'Service';
+                final icon = (cat['icon'] != null && cat['icon'].toString().isNotEmpty)
+                    ? cat['icon'].toString()
+                    : _getCategoryIcon(name);
+                final isSelected = _selectedCategoryIds.contains(id);
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedCategoryIds.remove(id);
+                      } else {
+                        _selectedCategoryIds.add(id);
+                      }
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFFFFC107) : Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: isSelected ? const Color(0xFFFFC107) : Colors.grey[300]!),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFFFFC107).withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(icon, style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 8),
+                        Text(
+                          name,
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            color: isSelected ? Colors.black : Colors.black87,
+                          ),
                         ),
-                      ),
-                    ],
+                        if (isSelected) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.check_circle_rounded, size: 16, color: Colors.black),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
+                );
+              }).toList(),
+            ),
           const SizedBox(height: 32),
           _buildTextField(
             label: 'Hourly Rate (₦)',

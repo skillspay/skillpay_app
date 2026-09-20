@@ -264,21 +264,42 @@ class _MessagesTabState extends State<MessagesTab> {
         ],
       ),
       title: Text(
-        chat.homeownerName,
+        chat.jobTitle.isNotEmpty ? chat.jobTitle : chat.homeownerName,
         style: TextStyle(
           fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
           fontSize: 15,
         ),
-      ),
-      subtitle: Text(
-        lastMsg,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: hasUnread ? Colors.black87 : Colors.grey[600],
-          fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
-          fontSize: 13,
-        ),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (chat.jobTitle.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Client: ${chat.homeownerName}',
+              style: TextStyle(
+                color: Colors.blue.shade700,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 2),
+          Text(
+            lastMsg,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: hasUnread ? Colors.black87 : Colors.grey[600],
+              fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
       trailing: Text(
         chat.timeText,

@@ -339,7 +339,9 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    widget.clientName,
+                    (widget.jobTitle?.isNotEmpty == true)
+                        ? widget.jobTitle!
+                        : widget.clientName,
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 16,
@@ -351,8 +353,8 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
                   Text(
                     _isOtherUserTyping
                         ? 'typing...'
-                        : (widget.jobTitle?.isNotEmpty == true
-                            ? widget.jobTitle!
+                        : ((widget.jobTitle?.isNotEmpty == true)
+                            ? widget.clientName
                             : 'Client'),
                     style: TextStyle(
                       fontSize: 11,
