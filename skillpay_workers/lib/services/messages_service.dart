@@ -97,7 +97,7 @@ class MessagesService {
         '/chat/conversations/$conversationId/messages',
         query: {
           'limit': limit,
-          if (before != null) 'before': before,
+          ...?before != null ? {'before': before} : null,
         },
       ) as List<dynamic>;
       return data
@@ -119,6 +119,7 @@ class MessagesService {
         '/chat/conversations/$conversationId/messages',
         body: {
           'message': message,
+          'senderRole': 'ARTISAN',
           if (attachmentUrls != null && attachmentUrls.isNotEmpty)
             'attachmentUrls': attachmentUrls,
         },

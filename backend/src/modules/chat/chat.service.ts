@@ -181,7 +181,29 @@ export class ChatService {
     limit?: number,
     before?: string,
   ) {
-    return this.prisma.message.findMany({
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        job: {
+          include: {
+            homeowner: { select: { userId: true } },
+            booking: { include: { artisan: { select: { userId: true } } } },
+            applications: {
+              where: { status: 'ACCEPTED' },
+              include: { artisan: { select: { userId: true } } },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    const homeownerUserId = conversation?.job?.homeowner?.userId;
+    const artisanUserId =
+      conversation?.job?.booking?.artisan?.userId ||
+      conversation?.job?.applications?.[0]?.artisan?.userId;
+
+    const messages = await this.prisma.message.findMany({
       where: {
         conversationId,
         ...(before ? { createdAt: { lt: new Date(before) } } : {}),
@@ -192,6 +214,20 @@ export class ChatService {
       orderBy: { createdAt: 'asc' },
       take: limit ? Number(limit) : 50,
     });
+
+    return messages.map((m: any) => {
+      let senderRole = m.sender?.role;
+      if (homeownerUserId && m.senderId === homeownerUserId) {
+        senderRole = 'HOMEOWNER';
+      } else if (artisanUserId && m.senderId === artisanUserId) {
+        senderRole = 'ARTISAN';
+      }
+
+      return {
+        ...m,
+        senderRole,
+      };
+    });
   }
 
   // ─── Send message ─────────────────────────────────────────────────────────
@@ -201,11 +237,41 @@ export class ChatService {
     senderId: string,
     message: string,
     attachment?: string[],
+    senderRole?: string,
   ) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        job: {
+          include: {
+            homeowner: { select: { userId: true } },
+            booking: { include: { artisan: { select: { userId: true } } } },
+            applications: {
+              where: { status: { in: ['ACCEPTED', 'PENDING'] } },
+              include: { artisan: { select: { userId: true } } },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    const homeownerUserId = conversation?.job?.homeowner?.userId;
+    const artisanUserId =
+      conversation?.job?.booking?.artisan?.userId ||
+      conversation?.job?.applications?.[0]?.artisan?.userId;
+
+    let effectiveSenderId = senderId;
+    if (senderRole === 'HOMEOWNER' && homeownerUserId) {
+      effectiveSenderId = homeownerUserId;
+    } else if (senderRole === 'ARTISAN' && artisanUserId) {
+      effectiveSenderId = artisanUserId;
+    }
+
     const msg = await this.prisma.message.create({
       data: {
         conversationId,
-        senderId,
+        senderId: effectiveSenderId,
         message,
         attachment: attachment ?? [],
       },
@@ -220,44 +286,28 @@ export class ChatService {
       data: { updatedAt: new Date() },
     });
 
+    const enrichedMsg = {
+      ...msg,
+      senderRole: senderRole || (effectiveSenderId === homeownerUserId ? 'HOMEOWNER' : 'ARTISAN'),
+    };
+
     // Broadcast instant message to WebSocket clients in this conversation room
-    this.chatGateway.broadcastNewMessage(conversationId, msg);
+    this.chatGateway.broadcastNewMessage(conversationId, enrichedMsg);
 
     // Notify the other party
     try {
-      const conversation = await this.prisma.conversation.findUnique({
-        where: { id: conversationId },
-        include: {
-          job: {
-            include: {
-              homeowner: { select: { userId: true } },
-              booking: { include: { artisan: { select: { userId: true } } } },
-              applications: {
-                where: { status: { in: ['ACCEPTED', 'PENDING'] } },
-                include: { artisan: { select: { userId: true } } },
-                take: 1,
-              },
-            },
-          },
-        },
-      });
-
       if (conversation && conversation.job) {
-        const homeownerUserId = conversation.job.homeowner?.userId;
-        const artisanUserId = conversation.job.booking?.artisan?.userId ||
-                              conversation.job.applications[0]?.artisan?.userId;
-        
         let receiverId: string | null | undefined = null;
-        if (senderId === homeownerUserId) receiverId = artisanUserId;
-        else if (senderId === artisanUserId) receiverId = homeownerUserId;
+        if (effectiveSenderId === homeownerUserId) receiverId = artisanUserId;
+        else if (effectiveSenderId === artisanUserId) receiverId = homeownerUserId;
         
-        if (receiverId && receiverId !== senderId) {
+        if (receiverId && receiverId !== effectiveSenderId) {
           await this.notificationsService.createNotification(
             receiverId,
-            'New Message',
-            `You received a new message: "${message.length > 30 ? message.substring(0, 30) + '...' : message}"`,
+            'New message',
+            message.slice(0, 80),
             'GENERAL',
-            { conversationId, jobId: conversation.jobId }
+            { conversationId, jobId: conversation.job.id },
           );
         }
       }

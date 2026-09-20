@@ -77,13 +77,14 @@ export class ChatController {
   sendMessage(
     @CurrentUser() user: AuthenticatedUser,
     @Param('conversationId') conversationId: string,
-    @Body() body: { message: string; attachmentUrls?: string[] },
+    @Body() body: { message: string; attachmentUrls?: string[]; senderRole?: string },
   ) {
     return this.chatService.sendMessage(
       conversationId,
       user.id,
       body.message,
       body.attachmentUrls,
+      body.senderRole,
     );
   }
 
