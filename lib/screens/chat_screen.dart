@@ -439,11 +439,13 @@ class _ChatScreenState extends State<ChatScreen> {
                       )
                     : ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
                           final msg = _messages[index];
-                          final isMe = msg.senderId == _currentUserId;
+                          final isMe = msg.senderRole != null
+                              ? msg.senderRole == 'HOMEOWNER'
+                              : msg.senderId == _currentUserId;
                           final time =
                               '${msg.createdAt.hour.toString().padLeft(2, '0')}:${msg.createdAt.minute.toString().padLeft(2, '0')}';
                           return _buildBubble(
@@ -471,119 +473,120 @@ class _ChatScreenState extends State<ChatScreen> {
     bool isSending = false,
     bool hasError = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment:
-            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
+    final maxWidth = MediaQuery.of(context).size.width * 0.78;
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        margin: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+        decoration: BoxDecoration(
+          color: isMe ? AppColors.primary : const Color(0xFFF2F4F7),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(3),
+            bottomRight: isMe ? const Radius.circular(3) : const Radius.circular(16),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
             ),
-            decoration: BoxDecoration(
-              color: isMe ? AppColors.primary : Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMe ? 16 : 0),
-                bottomRight: Radius.circular(isMe ? 0 : 16),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (attachmentUrls.isNotEmpty) ...[
-                  if (attachmentUrls.first.toLowerCase().endsWith('.pdf'))
-                    GestureDetector(
-                      onTap: () async {
-                        final uri = Uri.parse(attachmentUrls.first);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMe ? Colors.white.withAlpha(50) : const Color(0xFFF0F0F0),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.picture_as_pdf,
-                              color: isMe ? Colors.white : Colors.red,
-                              size: 32,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                attachmentUrls.first.split('/').last,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.outfit(
-                                  color: isMe ? Colors.white : AppColors.textDark,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        attachmentUrls.first,
-                        width: 200,
-                        height: 200,
-                        fit: BoxFit.cover,
-                      ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (attachmentUrls.isNotEmpty) ...[
+              if (attachmentUrls.first.toLowerCase().endsWith('.pdf'))
+                GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.parse(attachmentUrls.first);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isMe ? Colors.white.withAlpha(50) : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  if (text.isNotEmpty) const SizedBox(height: 8),
-                ],
-                if (text.isNotEmpty)
-                  Text(
-                    text,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      color: isMe ? Colors.white : AppColors.textDark,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.picture_as_pdf,
+                          color: isMe ? Colors.white : Colors.red,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            attachmentUrls.first.split('/').last,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              color: isMe ? Colors.white : AppColors.textDark,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                )
+              else
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    attachmentUrls.first,
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              if (text.isNotEmpty) const SizedBox(height: 6),
+            ],
+            if (text.isNotEmpty)
+              Text(
+                text,
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  height: 1.3,
+                  color: isMe ? Colors.white : AppColors.textDark,
+                ),
+              ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Spacer(),
+                Text(
+                  time,
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    color: isMe ? Colors.white.withAlpha(190) : AppColors.textMedium,
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  if (isSending)
+                    Icon(Icons.access_time, size: 12, color: Colors.white.withAlpha(190))
+                  else if (hasError)
+                    const Icon(Icons.error_outline, size: 12, color: Colors.red)
+                  else
+                    Icon(Icons.done_all, size: 14, color: Colors.white.withAlpha(220)),
+                ],
               ],
             ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                time,
-                style: GoogleFonts.outfit(
-                    fontSize: 12, color: AppColors.textMedium),
-              ),
-              if (isMe && isSending) ...[
-                const SizedBox(width: 4),
-                const Icon(Icons.access_time, size: 12, color: Colors.grey),
-              ],
-              if (isMe && hasError) ...[
-                const SizedBox(width: 4),
-                const Icon(Icons.error_outline, size: 12, color: Colors.red),
-              ],
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

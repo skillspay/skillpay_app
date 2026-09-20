@@ -7,6 +7,7 @@ class MessageModel {
   final String id;
   final String conversationId;
   final String senderId;
+  final String? senderRole;
   final String message;
   final List<String> attachmentUrls;
   final bool seen;
@@ -18,6 +19,7 @@ class MessageModel {
     required this.id,
     required this.conversationId,
     required this.senderId,
+    this.senderRole,
     required this.message,
     required this.attachmentUrls,
     required this.seen,
@@ -43,6 +45,9 @@ class MessageModel {
       senderId: map['senderId']?.toString() ??
           map['sender_id']?.toString() ??
           '',
+      senderRole: map['senderRole']?.toString() ??
+          map['sender_role']?.toString() ??
+          (map['sender'] is Map ? (map['sender'] as Map)['role']?.toString() : null),
       message: map['message']?.toString() ?? '',
       attachmentUrls: attachments,
       seen: (map['seen'] as bool?) ?? false,

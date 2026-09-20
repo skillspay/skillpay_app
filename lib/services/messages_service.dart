@@ -135,6 +135,7 @@ class MessagesService {
         '/chat/conversations/$conversationId/messages',
         body: {
           'message': message,
+          'senderRole': 'HOMEOWNER',
           if (attachmentUrls != null && attachmentUrls.isNotEmpty)
             'attachmentUrls': attachmentUrls,
         },
