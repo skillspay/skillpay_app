@@ -1,26 +1,56 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:skillpay/models/chat_model.dart';
 import 'package:skillpay/models/message_model.dart';
 import 'package:skillpay/services/api_client.dart';
 
-/// Handles all chat operations.
-///
-/// REST (via NestJS API):
-///   - Fetch conversation list
-///   - Fetch message history
-///   - Send messages
-///   - Upload attachments
-///
-/// Realtime (via Supabase channel):
-///   - Subscribe to live incoming messages within a conversation
-///   - Supabase Realtime is the only direct Supabase usage here
+/// Handles all chat operations via REST API and direct WebSockets.
+/// Independent of Supabase Realtime.
 class MessagesService {
   final _api = ApiClient.instance;
-  final _supabase = Supabase.instance.client;
 
-  RealtimeChannel? _activeChannel;
+  io.Socket? _socket;
+  String? _currentConversationId;
+
+  String get _socketUrl {
+    final url = dotenv.env['API_URL'] ?? 'https://backend.skillspays.com/api/v1';
+    final uri = Uri.parse(url);
+    final baseUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+    return '$baseUrl/chat';
+  }
+
+  void _initSocket() {
+    if (_socket != null) return;
+    try {
+      _socket = io.io(
+        _socketUrl,
+        io.OptionBuilder()
+            .setTransports(['websocket', 'polling'])
+            .enableAutoConnect()
+            .enableReconnection()
+            .build(),
+      );
+
+      _socket?.onConnect((_) {
+        debugPrint('Chat WebSocket connected to $_socketUrl');
+        if (_currentConversationId != null) {
+          _socket?.emit('join_conversation', _currentConversationId);
+        }
+      });
+
+      _socket?.onDisconnect((_) {
+        debugPrint('Chat WebSocket disconnected');
+      });
+
+      _socket?.onError((err) {
+        debugPrint('Chat WebSocket error: $err');
+      });
+    } catch (e) {
+      debugPrint('Error initializing chat socket: $e');
+    }
+  }
 
   // ─── User Identity ────────────────────────────────────────────────────────
   
@@ -130,81 +160,60 @@ class MessagesService {
     }
   }
 
-  // ─── Realtime ─────────────────────────────────────────────────────────────
+  // ─── Direct WebSocket Realtime ───────────────────────────────────────────
 
-  /// Subscribe to live messages for a conversation.
-  ///
-  /// Supabase Realtime listens to INSERT events on the `messages` table
-  /// filtered by `conversation_id`. New messages are delivered via [onMessage].
-  ///
-  /// Call [unsubscribe] when leaving the chat screen.
+  /// Subscribe to live messages for a conversation via WebSocket.
   void subscribeToMessages({
     required String conversationId,
     required String currentUserId,
     required void Function(MessageModel message) onMessage,
     required void Function(bool isTyping) onTyping,
   }) {
-    // Unsubscribe from any previous channel first
     unsubscribe();
+    _currentConversationId = conversationId;
+    _initSocket();
 
-    _activeChannel = _supabase
-        .channel('messages:$conversationId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'conversation_id',
-            value: conversationId,
-          ),
-          callback: (payload) {
-            try {
-              final newRecord = payload.newRecord;
-              onMessage(MessageModel.fromMap(newRecord));
-            } catch (e) {
-              debugPrint('Realtime parse error: $e');
-            }
-          },
-        )
-        .onPresenceSync((payload) {
-          final presenceState = _activeChannel?.presenceState();
-          if (presenceState != null) {
-            bool typing = false;
-            for (final state in presenceState) {
-              for (final presence in state.presences) {
-                final payload = presence.payload;
-                if (payload['user_id'] != currentUserId && payload['typing'] == true) {
-                  typing = true;
-                }
-              }
-            }
-            onTyping(typing);
-          }
-        })
-        .subscribe((status, [error]) async {
-          if (status == RealtimeSubscribeStatus.subscribed) {
-            await _activeChannel?.track({'user_id': currentUserId, 'typing': false});
-          }
-        });
-  }
+    if (_socket?.connected == true) {
+      _socket?.emit('join_conversation', conversationId);
+    }
 
-  Future<void> updateTypingStatus(String currentUserId, bool isTyping) async {
-    if (_activeChannel != null) {
+    _socket?.on('new_message', (data) {
       try {
-        await _activeChannel!.track({'user_id': currentUserId, 'typing': isTyping});
+        final map = Map<String, dynamic>.from(data as Map);
+        onMessage(MessageModel.fromMap(map));
       } catch (e) {
-        debugPrint('Error updating typing status: $e');
+        debugPrint('WebSocket new_message parse error: $e');
       }
+    });
+
+    _socket?.on('typing', (data) {
+      try {
+        final map = Map<String, dynamic>.from(data as Map);
+        if (map['userId'] != currentUserId) {
+          onTyping(map['isTyping'] == true);
+        }
+      } catch (_) {}
+    });
+  }
+
+  void updateTypingStatus(String currentUserId, bool isTyping) {
+    if (_currentConversationId != null && _socket?.connected == true) {
+      _socket?.emit('typing', {
+        'conversationId': _currentConversationId,
+        'userId': currentUserId,
+        'isTyping': isTyping,
+      });
     }
   }
 
-  /// Unsubscribe from the active Realtime channel.
+  /// Leave conversation room and clear listeners.
   void unsubscribe() {
-    if (_activeChannel != null) {
-      _supabase.removeChannel(_activeChannel!);
-      _activeChannel = null;
+    if (_currentConversationId != null) {
+      _socket?.emit('leave_conversation', _currentConversationId);
+      _currentConversationId = null;
     }
+    _socket?.off('new_message');
+    _socket?.off('typing');
   }
 
   // ─── Mark as seen ─────────────────────────────────────────────────────────
