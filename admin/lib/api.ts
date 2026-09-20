@@ -79,11 +79,27 @@ export const api = {
     getStats: () => request('/users/stats'),
   },
   artisans: {
+    list: (params?: { search?: string; verificationStatus?: string; page?: number; limit?: number }) => {
+      const query = new URLSearchParams();
+      if (params?.search) query.append('search', params.search);
+      if (params?.verificationStatus && params.verificationStatus !== 'ALL') {
+        query.append('verificationStatus', params.verificationStatus);
+      }
+      if (params?.page) query.append('page', params.page.toString());
+      if (params?.limit) query.append('limit', params.limit.toString());
+      const qs = query.toString();
+      return request(`/admin/artisans${qs ? `?${qs}` : ''}`);
+    },
     listPendingVerifications: () => request('/admin/verifications/pending'),
     verifyDocument: (id: string, status: 'VERIFIED' | 'REJECTED', adminNote?: string) =>
       request(`/admin/verifications/${id}`, {
         method: 'POST',
         body: JSON.stringify({ status, adminNote }),
+      }),
+    updateStatus: (id: string, verificationStatus: 'VERIFIED' | 'PENDING' | 'UNVERIFIED' | 'REJECTED') =>
+      request(`/admin/artisans/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ verificationStatus }),
       }),
   },
   categories: {

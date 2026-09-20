@@ -1,12 +1,12 @@
 import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/request-with-user.interface';
-import { Role } from '@prisma/client';
+import { Role, VerificationStatus } from '@prisma/client';
 
 @ApiTags('Admin')
 @ApiBearerAuth('supabase-jwt')
@@ -15,6 +15,31 @@ import { Role } from '@prisma/client';
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  // ─── Artisans Management ───────────────────────────────────────────────────
+
+  @Get('artisans')
+  @ApiOperation({ summary: 'List all artisans with stats and filter' })
+  getAllArtisans(
+    @Query('search') search?: string,
+    @Query('verificationStatus') verificationStatus?: VerificationStatus,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.adminService.getAllArtisans({ search, verificationStatus, page, limit });
+  }
+
+  @Patch('artisans/:id/status')
+  @ApiOperation({ summary: 'Update artisan verification status directly' })
+  async updateArtisanStatus(
+    @Param('id') id: string,
+    @Body('verificationStatus') verificationStatus: VerificationStatus,
+    @CurrentUser() admin: AuthenticatedUser,
+  ) {
+    const res = await this.adminService.updateArtisanStatus(id, verificationStatus);
+    await this.adminService.logAction(admin.id, `Artisan status updated to ${verificationStatus}`, 'artisans', id, { verificationStatus });
+    return res;
+  }
 
   // ─── Verification Endpoints ────────────────────────────────────────────────
 

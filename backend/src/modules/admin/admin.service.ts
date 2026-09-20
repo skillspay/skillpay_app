@@ -17,6 +17,99 @@ export class AdminService {
     });
   }
 
+  async getAllArtisans(query?: {
+    search?: string;
+    verificationStatus?: VerificationStatus;
+    page?: number;
+    limit?: number;
+  }) {
+    const where: any = {};
+    if (query?.verificationStatus) {
+      where.verificationStatus = query.verificationStatus;
+    }
+    if (query?.search) {
+      where.OR = [
+        { fullName: { contains: query.search, mode: 'insensitive' } },
+        { businessName: { contains: query.search, mode: 'insensitive' } },
+        { user: { email: { contains: query.search, mode: 'insensitive' } } },
+        { user: { phone: { contains: query.search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const page = query?.page ? Number(query.page) : 1;
+    const limit = query?.limit ? Number(query.limit) : 50;
+    const skip = (page - 1) * limit;
+
+    const [artisans, total, stats, allTotal] = await Promise.all([
+      this.prisma.artisan.findMany({
+        where,
+        include: {
+          user: {
+            select: { id: true, email: true, phone: true, status: true, isVerified: true, createdAt: true },
+          },
+          categories: {
+            include: { category: true },
+          },
+          verificationDocuments: true,
+          _count: {
+            select: { bookings: true, reviews: true, applications: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.artisan.count({ where }),
+      this.prisma.artisan.groupBy({
+        by: ['verificationStatus'],
+        _count: true,
+      }),
+      this.prisma.artisan.count(),
+    ]);
+
+    const statusCounts = stats.reduce((acc, curr) => {
+      acc[curr.verificationStatus] = curr._count;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      data: artisans,
+      total,
+      page,
+      limit,
+      stats: {
+        total: allTotal,
+        verified: statusCounts['VERIFIED'] || 0,
+        pending: statusCounts['PENDING'] || 0,
+        unverified: statusCounts['UNVERIFIED'] || 0,
+      },
+    };
+  }
+
+  async updateArtisanStatus(artisanId: string, verificationStatus: VerificationStatus) {
+    const artisan = await this.prisma.artisan.findUnique({ where: { id: artisanId } });
+    if (!artisan) throw new NotFoundException(`Artisan ${artisanId} not found`);
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.artisan.update({
+        where: { id: artisanId },
+        data: { verificationStatus },
+      });
+      if (verificationStatus === VerificationStatus.VERIFIED) {
+        await tx.user.update({
+          where: { id: artisan.userId },
+          data: { isVerified: true },
+        });
+      } else if (verificationStatus === VerificationStatus.UNVERIFIED || verificationStatus === VerificationStatus.REJECTED) {
+        await tx.user.update({
+          where: { id: artisan.userId },
+          data: { isVerified: false },
+        });
+      }
+      return updated;
+    });
+  }
+
   async reviewVerificationDocument(
     docId: string,
     status: 'VERIFIED' | 'REJECTED',
