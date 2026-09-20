@@ -15,7 +15,6 @@ import 'package:skillpay/screens/artisan_profile_screen.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:skillpay/services/notifications_service.dart';
 import 'package:skillpay/screens/artisans_screen.dart';
-import 'package:skillpay/screens/profile_screen.dart';
 import 'package:skillpay/screens/job_details_screen.dart';
 
 extension StringExtension on String {
@@ -423,7 +422,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                             return Padding(
                               padding: const EdgeInsets.only(right: 16),
-                              child: _CategoryItem(category.image ?? category.icon ?? iconPath, category.name),
+                              child: _CategoryItem(
+                                category.image ?? category.icon ?? iconPath,
+                                category.name,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ArtisansScreen(
+                                        initialCategoryId: category.id,
+                                        initialCategoryName: category.name,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             );
                           }).toList(),
                         );
@@ -722,35 +735,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
 class _CategoryItem extends StatelessWidget {
   final String imagePath;
   final String title;
+  final VoidCallback? onTap;
 
-  const _CategoryItem(this.imagePath, this.title);
+  const _CategoryItem(this.imagePath, this.title, {this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(16),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            alignment: Alignment.center,
+            child: imagePath.startsWith('http')
+                ? Image.network(imagePath, width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.category, size: 48, color: AppColors.textMedium))
+                : Image.asset(imagePath, width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.category, size: 48, color: AppColors.textMedium)),
           ),
-          alignment: Alignment.center,
-          child: imagePath.startsWith('http')
-              ? Image.network(imagePath, width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.category, size: 48, color: AppColors.textMedium))
-              : Image.asset(imagePath, width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.category, size: 48, color: AppColors.textMedium)),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          title,
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textDark,
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textDark,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

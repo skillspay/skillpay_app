@@ -354,7 +354,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    widget.artisanName,
+                    (widget.jobTitle?.isNotEmpty == true)
+                        ? widget.jobTitle!
+                        : widget.artisanName,
                     style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -366,8 +368,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     _isOtherUserTyping
                         ? 'typing...'
-                        : (widget.jobTitle?.isNotEmpty == true
-                            ? widget.jobTitle!
+                        : ((widget.jobTitle?.isNotEmpty == true)
+                            ? widget.artisanName
                             : 'Online'),
                     style: GoogleFonts.outfit(
                       fontSize: 11,

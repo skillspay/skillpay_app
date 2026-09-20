@@ -339,10 +339,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Widget _buildChatTile(ChatModel chat) {
+    final bool hasJobTitle = chat.jobTitle.isNotEmpty;
+    final String projectTitle = hasJobTitle ? chat.jobTitle : chat.artisanName;
     final String name = chat.artisanName;
     final String lastMsg = chat.lastMessage.isNotEmpty
         ? chat.lastMessage
-        : (chat.jobTitle.isNotEmpty ? 'Job: ${chat.jobTitle}' : 'Tap to chat');
+        : 'Tap to chat';
     final String time = chat.timeText;
     final bool hasUnread = chat.unreadCount > 0;
 
@@ -367,8 +369,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
         ).then((_) => _loadChats());
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildAvatar(chat),
             const SizedBox(width: 14),
@@ -381,7 +384,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          name,
+                          projectTitle,
                           style: GoogleFonts.outfit(
                             fontSize: 15,
                             fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
@@ -402,6 +405,27 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       ),
                     ],
                   ),
+                  if (hasJobTitle) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(Icons.person_outline_rounded, size: 13, color: Colors.amber.shade800),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.amber.shade900,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Row(
                     children: [

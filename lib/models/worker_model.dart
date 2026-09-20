@@ -55,7 +55,12 @@ class WorkerModel {
     final rawCats = map['categories'] as List<dynamic>? ?? [];
     final categoryNames = rawCats.map((c) {
       if (c is String) return c;
-      if (c is Map) return c['name']?.toString() ?? '';
+      if (c is Map) {
+        if (c['category'] is Map) {
+          return c['category']['name']?.toString() ?? '';
+        }
+        return c['name']?.toString() ?? '';
+      }
       return '';
     }).where((s) => s.isNotEmpty).toList();
 
