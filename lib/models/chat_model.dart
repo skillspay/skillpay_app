@@ -5,6 +5,8 @@
 class ChatModel {
   final String id; // conversations.id
   final String jobId;
+  final String jobTitle;
+  final String? categoryName;
   final String artisanId;
   final String artisanName;
   final String? artisanAvatarUrl;
@@ -16,6 +18,8 @@ class ChatModel {
   ChatModel({
     required this.id,
     required this.jobId,
+    this.jobTitle = '',
+    this.categoryName,
     required this.artisanId,
     required this.artisanName,
     this.artisanAvatarUrl,
@@ -26,7 +30,16 @@ class ChatModel {
   });
 
   factory ChatModel.fromMap(Map<String, dynamic> map) {
-    final artisan = map['artisan'] as Map<String, dynamic>? ?? {};
+    final artisan = (map['artisan'] is Map)
+        ? Map<String, dynamic>.from(map['artisan'] as Map)
+        : <String, dynamic>{};
+    final job = (map['job'] is Map)
+        ? Map<String, dynamic>.from(map['job'] as Map)
+        : <String, dynamic>{};
+    final category = (job['category'] is Map)
+        ? Map<String, dynamic>.from(job['category'] as Map)
+        : null;
+
     final updatedAt = map['updatedAt'] != null
         ? DateTime.tryParse(map['updatedAt'].toString()) ??
             DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
@@ -43,20 +56,36 @@ class ChatModel {
       timeText = '${diff.inMinutes}m';
     }
 
+    String parsedName = artisan['fullName']?.toString() ??
+        artisan['full_name']?.toString() ??
+        map['artisanName']?.toString() ??
+        '';
+
+    final String jobTitle = job['title']?.toString() ?? '';
+
+    if (parsedName.isEmpty || parsedName.trim().toLowerCase() == 'artisan') {
+      if (jobTitle.isNotEmpty) {
+        parsedName = jobTitle;
+      } else {
+        parsedName = 'Artisan';
+      }
+    }
+
+    final avatar = artisan['profilePhoto']?.toString() ??
+        artisan['profile_photo']?.toString() ??
+        map['artisanAvatarUrl']?.toString();
+
     return ChatModel(
       id: map['id']?.toString() ?? '',
       jobId: map['jobId']?.toString() ?? map['job_id']?.toString() ?? '',
+      jobTitle: jobTitle,
+      categoryName: category?['name']?.toString(),
       artisanId: map['artisanId']?.toString() ??
           map['artisan_id']?.toString() ??
           artisan['id']?.toString() ??
           '',
-      artisanName: artisan['fullName']?.toString() ??
-          artisan['full_name']?.toString() ??
-          map['artisanName']?.toString() ??
-          'Artisan',
-      artisanAvatarUrl: artisan['profilePhoto']?.toString() ??
-          artisan['profile_photo']?.toString() ??
-          map['artisanAvatarUrl']?.toString(),
+      artisanName: parsedName,
+      artisanAvatarUrl: (avatar != null && avatar.isNotEmpty) ? avatar : null,
       lastMessage: map['lastMessage']?.toString() ??
           map['last_message']?.toString() ??
           '',

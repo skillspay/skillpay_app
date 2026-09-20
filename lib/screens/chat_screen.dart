@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:skillpay/models/message_model.dart';
 import 'package:skillpay/services/messages_service.dart';
 import 'package:skillpay/services/jobs_service.dart';
@@ -16,12 +15,16 @@ import 'dart:async';
 class ChatScreen extends StatefulWidget {
   final String artisanName;
   final String conversationId;
+  final String? artisanAvatarUrl;
+  final String? jobTitle;
   final Map<String, dynamic>? artisanData;
 
   const ChatScreen({
     super.key,
     required this.artisanName,
     required this.conversationId,
+    this.artisanAvatarUrl,
+    this.jobTitle,
     this.artisanData,
   });
 
@@ -43,6 +46,15 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic>? _artisanData;
   bool _isOtherUserTyping = false;
   Timer? _typingTimer;
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'A';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
+  }
 
   @override
   void initState() {
@@ -290,18 +302,87 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          widget.artisanName,
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Colors.amber.shade400, Colors.amber.shade600],
+                ),
+              ),
+              child: ClipOval(
+                child: (widget.artisanAvatarUrl != null && widget.artisanAvatarUrl!.isNotEmpty)
+                    ? Image.network(
+                        widget.artisanAvatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Text(
+                            _getInitials(widget.artisanName),
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          _getInitials(widget.artisanName),
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.artisanName,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    _isOtherUserTyping
+                        ? 'typing...'
+                        : (widget.jobTitle?.isNotEmpty == true
+                            ? widget.jobTitle!
+                            : 'Online'),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      color: _isOtherUserTyping
+                          ? Colors.amber.shade300
+                          : Colors.white70,
+                      fontWeight: _isOtherUserTyping ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
           if (_canHire && _artisanData != null)
