@@ -116,13 +116,17 @@ class JobsService {
     }
   }
 
-  /// Hire an artisan for a job
-  Future<void> hireArtisan(String jobId, String artisanId) async {
+  /// Hire an artisan for a job and return booking ID
+  Future<String?> hireArtisan(String jobId, String artisanId) async {
     try {
-      await _api.post('/bookings/direct', body: {
+      final res = await _api.post('/bookings/direct', body: {
         'jobId': jobId,
         'artisanId': artisanId,
       });
+      if (res is Map && res['id'] != null) {
+        return res['id'].toString();
+      }
+      return null;
     } on ApiException catch (e) {
       throw Exception(e.message);
     }

@@ -4,11 +4,14 @@ import 'package:skillpay/theme/app_theme.dart';
 // import 'package:skillpay/screens/main_navigation_screen.dart'; // Navigation back to history
 
 import 'package:skillpay/services/stripe_service.dart';
+import 'package:skillpay/services/jobs_service.dart';
 
 void showPayInvoiceModal(
   BuildContext context, {
   required double jobAmount,
   String? bookingId,
+  String? jobId,
+  String? artisanId,
   required VoidCallback onPaymentSuccess,
 }) {
   showModalBottomSheet(
@@ -18,6 +21,8 @@ void showPayInvoiceModal(
     builder: (context) => _PayInvoiceModal(
       jobAmount: jobAmount,
       bookingId: bookingId,
+      jobId: jobId,
+      artisanId: artisanId,
       onPaymentSuccess: onPaymentSuccess,
     ),
   );
@@ -26,11 +31,15 @@ void showPayInvoiceModal(
 class _PayInvoiceModal extends StatefulWidget {
   final double jobAmount;
   final String? bookingId;
+  final String? jobId;
+  final String? artisanId;
   final VoidCallback onPaymentSuccess;
 
   const _PayInvoiceModal({
     required this.jobAmount,
     this.bookingId,
+    this.jobId,
+    this.artisanId,
     required this.onPaymentSuccess,
   });
 
@@ -61,6 +70,8 @@ class _PayInvoiceModalState extends State<_PayInvoiceModal> {
       _amountController.text.isEmpty ? '0.00' : _amountController.text,
       widget.onPaymentSuccess,
       bookingId: widget.bookingId,
+      jobId: widget.jobId,
+      artisanId: widget.artisanId,
     );
   }
 
@@ -214,6 +225,8 @@ void showPaymentMethodModal(
   String amountStr,
   VoidCallback onPaymentSuccess, {
   String? bookingId,
+  String? jobId,
+  String? artisanId,
 }) {
   showModalBottomSheet(
     context: context,
@@ -222,6 +235,8 @@ void showPaymentMethodModal(
     builder: (context) => _PaymentMethodModal(
       amount: amountStr,
       bookingId: bookingId,
+      jobId: jobId,
+      artisanId: artisanId,
       onPaymentSuccess: onPaymentSuccess,
     ),
   );
@@ -230,11 +245,15 @@ void showPaymentMethodModal(
 class _PaymentMethodModal extends StatefulWidget {
   final String amount;
   final String? bookingId;
+  final String? jobId;
+  final String? artisanId;
   final VoidCallback onPaymentSuccess;
 
   const _PaymentMethodModal({
     required this.amount,
     this.bookingId,
+    this.jobId,
+    this.artisanId,
     required this.onPaymentSuccess,
   });
 
@@ -249,11 +268,26 @@ class _PaymentMethodModalState extends State<_PaymentMethodModal> {
   Future<void> _onPay() async {
     if (_isProcessing) return;
 
-    if (_selectedMethod == 'stripe' && widget.bookingId != null && widget.bookingId!.isNotEmpty) {
+    if (_selectedMethod == 'stripe') {
       setState(() => _isProcessing = true);
       try {
+        String? bookingId = widget.bookingId;
+
+        // If booking doesn't exist yet and we have jobId & artisanId, create it first
+        if ((bookingId == null || bookingId.isEmpty) &&
+            widget.jobId != null &&
+            widget.artisanId != null) {
+          try {
+            bookingId = await JobsService().hireArtisan(widget.jobId!, widget.artisanId!);
+          } catch (e) {
+            debugPrint('Notice: hireArtisan direct booking: $e');
+          }
+        }
+
         final success = await StripeService.instance.processPayment(
-          bookingId: widget.bookingId!,
+          bookingId: bookingId,
+          jobId: widget.jobId,
+          artisanId: widget.artisanId,
           amount: double.tryParse(widget.amount),
         );
 
@@ -277,7 +311,15 @@ class _PaymentMethodModalState extends State<_PaymentMethodModal> {
         );
       }
     } else {
-      // Direct action / other method
+      // Direct action / other method (e.g. PayPal)
+      if ((widget.bookingId == null || widget.bookingId!.isEmpty) &&
+          widget.jobId != null &&
+          widget.artisanId != null) {
+        try {
+          await JobsService().hireArtisan(widget.jobId!, widget.artisanId!);
+        } catch (_) {}
+      }
+      if (!mounted) return;
       widget.onPaymentSuccess();
       Navigator.pop(context);
       showPaymentSuccessModal(context, widget.amount);

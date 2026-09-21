@@ -30,16 +30,20 @@ class StripeService {
     }
   }
 
-  /// Process Stripe PaymentSheet for a given booking
+  /// Process Stripe PaymentSheet for a given booking or job
   Future<bool> processPayment({
-    required String bookingId,
+    String? bookingId,
+    String? jobId,
+    String? artisanId,
     double? amount,
     String customerName = 'SkillPay Customer',
   }) async {
     try {
       // 1. Create PaymentIntent on backend
       final payload = <String, dynamic>{
-        'bookingId': bookingId,
+        if (bookingId != null && bookingId.isNotEmpty) 'bookingId': bookingId,
+        if (jobId != null && jobId.isNotEmpty) 'jobId': jobId,
+        if (artisanId != null && artisanId.isNotEmpty) 'artisanId': artisanId,
         if (amount != null && amount > 0) 'amount': amount,
       };
 
@@ -69,7 +73,7 @@ class StripeService {
           style: ThemeMode.light,
           appearance: const PaymentSheetAppearance(
             colors: PaymentSheetAppearanceColors(
-              primary: Color(0xFF0066FF),
+              primary: Color(0xFFFFC107),
             ),
           ),
         ),
