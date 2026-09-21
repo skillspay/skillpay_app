@@ -76,5 +76,7 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Skillpay Workers requires camera access to take profile photos, capture work sample images, and scan documents for identity verification.</string>
 </dict>
 </plist>
