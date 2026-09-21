@@ -2,9 +2,11 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   preview: {
-    // Allow Railway domain and your custom domain
+    // Allow Railway domain and custom domains
     allowedHosts: [
+      'skillspays.com',
       'auth.skillspays.com',
+      '.skillspays.com',
       '.railway.app', // wildcard for all railway subdomains
     ],
     host: '0.0.0.0',
