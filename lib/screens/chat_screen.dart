@@ -117,7 +117,8 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       if (mounted) {
         setState(() {
-          _messages = msgs;
+          final seen = <String>{};
+          _messages = msgs.where((m) => seen.add(m.id)).toList();
           _isLoading = false;
         });
         _scrollToBottom();
@@ -127,17 +128,32 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _addOrUpdateMessage(MessageModel msg) {
+    if (!mounted) return;
+    setState(() {
+      // 1. If real message ID already in list, do not duplicate
+      if (_messages.any((m) => m.id == msg.id)) return;
+
+      // 2. If there's an optimistic placeholder matching this message, replace it
+      final optimisticIdx = _messages.indexWhere(
+        (m) => m.id.startsWith('optimistic_') && m.message == msg.message,
+      );
+      if (optimisticIdx != -1) {
+        _messages[optimisticIdx] = msg;
+      } else {
+        _messages.add(msg);
+      }
+    });
+    _scrollToBottom();
+  }
+
   void _subscribeToRealtime() {
     if (_currentUserId == null) return;
     _messagesService.subscribeToMessages(
       conversationId: widget.conversationId,
       currentUserId: _currentUserId!,
       onMessage: (msg) {
-        if (mounted) {
-          if (_messages.any((m) => m.id == msg.id)) return;
-          setState(() => _messages.add(msg));
-          _scrollToBottom();
-        }
+        _addOrUpdateMessage(msg);
       },
       onTyping: (isTyping) {
         if (mounted) {
@@ -249,6 +265,7 @@ class _ChatScreenState extends State<ChatScreen> {
       id: 'optimistic_${DateTime.now().millisecondsSinceEpoch}',
       conversationId: widget.conversationId,
       senderId: _currentUserId ?? '',
+      senderRole: 'HOMEOWNER',
       message: text,
       attachmentUrls: uploadedUrl != null ? [uploadedUrl] : [],
       seen: false,
@@ -272,11 +289,16 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           _isUploading = false;
-          final index = _messages.indexWhere((m) => m.id == optimisticMsg.id);
-          if (index != -1) {
-            _messages[index] = sent;
+          // If WebSocket already added the message, remove the optimistic placeholder
+          if (_messages.any((m) => m.id == sent.id)) {
+            _messages.removeWhere((m) => m.id == optimisticMsg.id);
           } else {
-            if (!_messages.any((m) => m.id == sent.id)) _messages.add(sent);
+            final index = _messages.indexWhere((m) => m.id == optimisticMsg.id);
+            if (index != -1) {
+              _messages[index] = sent;
+            } else {
+              _messages.add(sent);
+            }
           }
         });
       }
