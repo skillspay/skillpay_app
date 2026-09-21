@@ -70,8 +70,10 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
     try {
       final messages = await _messagesService.fetchMessages(widget.conversationId);
       if (mounted) {
+        final seen = <String>{};
+        final msgs = messages.reversed.toList();
         setState(() {
-          _messages = messages.reversed.toList();
+          _messages = msgs.where((m) => seen.add(m.id)).toList();
           _isLoading = false;
         });
         
@@ -87,26 +89,36 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
     }
   }
 
+  void _addOrUpdateMessage(MessageModel message) {
+    if (!mounted) return;
+    setState(() {
+      if (_messages.any((m) => m.id == message.id)) return;
+
+      final optimisticIdx = _messages.indexWhere(
+        (m) => m.id.startsWith('optimistic_') && m.message == message.message,
+      );
+      if (optimisticIdx != -1) {
+        _messages[optimisticIdx] = message;
+      } else {
+        _messages.insert(0, message);
+      }
+    });
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   void _setupRealtime() {
     if (_myUserId == null) return;
     _messagesService.subscribeToMessages(
       conversationId: widget.conversationId,
       currentUserId: _myUserId!,
       onMessage: (message) {
-        if (mounted) {
-          if (_messages.any((m) => m.id == message.id)) return;
-          
-          setState(() {
-            _messages.insert(0, message);
-          });
-          if (_scrollController.hasClients) {
-            _scrollController.animateTo(
-              0.0,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
-        }
+        _addOrUpdateMessage(message);
       },
       onTyping: (isTyping) {
         if (mounted) {
@@ -215,6 +227,7 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
       id: 'optimistic_${DateTime.now().millisecondsSinceEpoch}',
       conversationId: widget.conversationId,
       senderId: _myUserId ?? '',
+      senderRole: 'ARTISAN',
       message: text,
       attachmentUrls: uploadedUrl != null ? [uploadedUrl] : [],
       seen: false,
@@ -243,11 +256,15 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
       if (mounted) {
         setState(() {
           _isUploading = false;
-          final index = _messages.indexWhere((m) => m.id == optimisticMsg.id);
-          if (index != -1) {
-            _messages[index] = sent;
+          if (_messages.any((m) => m.id == sent.id)) {
+            _messages.removeWhere((m) => m.id == optimisticMsg.id);
           } else {
-            if (!_messages.any((m) => m.id == sent.id)) _messages.insert(0, sent);
+            final index = _messages.indexWhere((m) => m.id == optimisticMsg.id);
+            if (index != -1) {
+              _messages[index] = sent;
+            } else {
+              _messages.insert(0, sent);
+            }
           }
         });
       }
