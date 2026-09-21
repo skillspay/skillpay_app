@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import Stripe from 'stripe';
-import { PaymentGateway, PaymentMethod } from '@prisma/client';
+import { PaymentGateway, PaymentMethod, BookingStatus } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -27,21 +27,77 @@ export class PaymentsService {
   // ─── Stripe Integration ──────────────────────────────────────────────────────
 
   async createStripePaymentIntent(data: {
-    bookingId: string;
+    bookingId?: string;
+    jobId?: string;
+    artisanId?: string;
     amount?: number;
-  }) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: data.bookingId },
-      include: { application: true, job: true },
-    });
+  }, userId?: string) {
+    let booking: any = null;
 
-    if (!booking) {
-      throw new NotFoundException(`Booking ${data.bookingId} not found`);
+    if (data.bookingId) {
+      booking = await this.prisma.booking.findUnique({
+        where: { id: data.bookingId },
+        include: { application: true, job: true },
+      });
+      if (!booking && !data.jobId) {
+        this.logger.warn(`Booking ${data.bookingId} not found in database`);
+      }
+    }
+
+    if (!booking && data.jobId) {
+      booking = await this.prisma.booking.findUnique({
+        where: { jobId: data.jobId },
+        include: { application: true, job: true },
+      });
+
+      if (!booking) {
+        const homeowner = userId ? await this.prisma.homeowner.findUnique({
+          where: { userId },
+        }) : null;
+
+        const job = await this.prisma.job.findUnique({
+          where: { id: data.jobId },
+          include: { applications: true },
+        });
+
+        if (job) {
+          const effectiveArtisanId = data.artisanId || job.applications[0]?.artisanId;
+          const effectiveHomeownerId = homeowner?.id || job.homeownerId;
+
+          if (effectiveArtisanId && effectiveHomeownerId) {
+            let app = await this.prisma.jobApplication.findFirst({
+              where: { jobId: job.id, artisanId: effectiveArtisanId },
+            });
+            if (!app) {
+              app = await this.prisma.jobApplication.create({
+                data: {
+                  jobId: job.id,
+                  artisanId: effectiveArtisanId,
+                  price: data.amount || job.budget,
+                  proposal: 'Direct hire',
+                  status: 'ACCEPTED',
+                },
+              });
+            }
+
+            booking = await this.prisma.booking.create({
+              data: {
+                jobId: job.id,
+                applicationId: app.id,
+                artisanId: effectiveArtisanId,
+                homeownerId: effectiveHomeownerId,
+                status: BookingStatus.CONFIRMED,
+              },
+              include: { application: true, job: true },
+            });
+          }
+        }
+      }
     }
 
     const price = data.amount && data.amount > 0
       ? Number(data.amount)
-      : (booking.application?.price ? Number(booking.application.price) : Number(booking.job?.budget ?? 0));
+      : (booking?.application?.price ? Number(booking.application.price) : Number(booking?.job?.budget ?? 0));
 
     if (price <= 0) {
       throw new BadRequestException('Payment amount must be greater than zero');
@@ -54,48 +110,49 @@ export class PaymentsService {
       amount: amountInCents,
       currency: 'usd',
       metadata: {
-        bookingId: booking.id,
-        jobId: booking.jobId,
-        artisanId: booking.artisanId,
-        homeownerId: booking.homeownerId,
+        bookingId: booking?.id || data.bookingId || '',
+        jobId: booking?.jobId || data.jobId || '',
+        artisanId: booking?.artisanId || data.artisanId || '',
+        homeownerId: booking?.homeownerId || '',
       },
     });
 
-    // Check if payment already exists for this booking
-    const existing = await this.prisma.payment.findUnique({
-      where: { bookingId: booking.id },
-    });
-
     let payment;
-    if (existing) {
-      payment = await this.prisma.payment.update({
-        where: { id: existing.id },
-        data: {
-          amount: price,
-          gateway: PaymentGateway.STRIPE,
-          paymentMethod: PaymentMethod.CARD,
-          gatewayRef: intent.id,
-          status: 'PENDING',
-        },
+    if (booking) {
+      const existing = await this.prisma.payment.findUnique({
+        where: { bookingId: booking.id },
       });
-    } else {
-      payment = await this.prisma.payment.create({
-        data: {
-          bookingId: booking.id,
-          homeownerId: booking.homeownerId,
-          artisanId: booking.artisanId,
-          reference: uuidv4(),
-          amount: price,
-          gateway: PaymentGateway.STRIPE,
-          paymentMethod: PaymentMethod.CARD,
-          gatewayRef: intent.id,
-          status: 'PENDING',
-        },
-      });
+
+      if (existing) {
+        payment = await this.prisma.payment.update({
+          where: { id: existing.id },
+          data: {
+            amount: price,
+            gateway: PaymentGateway.STRIPE,
+            paymentMethod: PaymentMethod.CARD,
+            gatewayRef: intent.id,
+            status: 'PENDING',
+          },
+        });
+      } else {
+        payment = await this.prisma.payment.create({
+          data: {
+            bookingId: booking.id,
+            homeownerId: booking.homeownerId,
+            artisanId: booking.artisanId,
+            reference: uuidv4(),
+            amount: price,
+            gateway: PaymentGateway.STRIPE,
+            paymentMethod: PaymentMethod.CARD,
+            gatewayRef: intent.id,
+            status: 'PENDING',
+          },
+        });
+      }
     }
 
     return {
-      paymentId: payment.id,
+      paymentId: payment?.id,
       clientSecret: intent.client_secret,
       publishableKey: this.config.get<string>('stripe.publishableKey'),
       amount: price,

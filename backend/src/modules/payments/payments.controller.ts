@@ -25,9 +25,10 @@ export class PaymentsController {
   @Post('stripe/create-intent')
   @ApiOperation({ summary: 'Create Stripe PaymentIntent' })
   createStripeIntent(
-    @Body() body: { bookingId: string; amount?: number },
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { bookingId?: string; jobId?: string; artisanId?: string; amount?: number },
   ) {
-    return this.paymentsService.createStripePaymentIntent(body);
+    return this.paymentsService.createStripePaymentIntent(body, user?.id);
   }
 
   @ApiBearerAuth('supabase-jwt')

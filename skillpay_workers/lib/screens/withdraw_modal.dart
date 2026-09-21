@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/wallet_service.dart';
 
 class WithdrawModal extends StatefulWidget {
@@ -31,6 +29,7 @@ class _WithdrawModalState extends State<WithdrawModal> {
     try {
       await _walletService.requestWithdrawal(amount);
       
+      if (!mounted) return;
       Navigator.pop(context);
       widget.onWithdrawSuccess();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -38,6 +37,7 @@ class _WithdrawModalState extends State<WithdrawModal> {
       );
     } catch (e) {
       debugPrint('Error: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
       );
@@ -107,13 +107,14 @@ class _WithdrawModalState extends State<WithdrawModal> {
           ElevatedButton(
             onPressed: _isLoading ? null : _submitWithdrawal,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5F1ED9),
+              backgroundColor: const Color(0xFFFFC107),
+              foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: _isLoading
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text('Submit Request', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                : const Text('Submit Request', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
           ),
           const SizedBox(height: 32),
         ],
