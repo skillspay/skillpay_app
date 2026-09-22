@@ -1,0 +1,3 @@
+[submodule "skillpay_customer"]
+	path = skillpay_customer
+	url = https://github.com/Roquverse/skillpay_customer.git
