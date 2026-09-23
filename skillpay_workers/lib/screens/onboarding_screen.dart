@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_screen.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
+import '../widgets/policy_viewer_modal.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -14,6 +15,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _agreedToTerms = false;
 
   @override
   void dispose() {
@@ -159,12 +161,132 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
+          // Terms & Disclaimers Agreement Checkbox
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: Checkbox(
+                    value: _agreedToTerms,
+                    activeColor: const Color(0xFFFFC107),
+                    checkColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    side: const BorderSide(color: Color(0xFFCCCCCC), width: 1.5),
+                    onChanged: (val) {
+                      setState(() {
+                        _agreedToTerms = val ?? false;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'I confirm that I have read and agree to the ',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF666666),
+                          height: 1.4,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.terms),
+                        child: const Text(
+                          'Artisan Terms of Use',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        ', ',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.privacy),
+                        child: const Text(
+                          'Privacy Policy',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        ', & ',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.disclaimers),
+                        child: const Text(
+                          'Platform Disclaimers',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        '.',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              onPressed: () => _navigateToAuth('Create Account'),
+              onPressed: () {
+                if (!_agreedToTerms) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'Please accept the Artisan Terms and Policies to continue.',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      backgroundColor: const Color(0xFFD32F2F),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                  return;
+                }
+                _navigateToAuth('Create Account');
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFC107), // Yellow
                 foregroundColor: Colors.black,
@@ -179,7 +301,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -199,7 +321,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
         ],
       ),
     );

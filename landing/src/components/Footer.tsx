@@ -54,18 +54,33 @@ function SocialIcon({ kind }: { kind: "facebook" | "x" | "instagram" }) {
   );
 }
 
-function FooterColumn({ title, links }: { title: string; links: string[] }) {
+interface FooterLink {
+  label: string;
+  href: string;
+}
+
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: string;
+  links: (string | FooterLink)[];
+}) {
   return (
     <div className="space-y-4">
       <p className="font-semibold text-gray-900">{title}</p>
       <ul className="space-y-3 text-sm text-gray-500">
-        {links.map((l) => (
-          <li key={l}>
-            <a className="hover:text-gray-900 transition-colors" href="#">
-              {l}
-            </a>
-          </li>
-        ))}
+        {links.map((item) => {
+          const label = typeof item === "string" ? item : item.label;
+          const href = typeof item === "string" ? "#" : item.href;
+          return (
+            <li key={label}>
+              <a className="hover:text-gray-900 transition-colors" href={href}>
+                {label}
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -79,34 +94,35 @@ export default function Footer() {
           <FooterColumn
             title="Products"
             links={[
-              "SkillPay artisans",
-              "SkillPay homeowners",
-              "SkillPay business",
-              "Invoice",
-              "Request",
-              "Subscriptions",
+              { label: "SkillPay artisans", href: "#features" },
+              { label: "SkillPay homeowners", href: "#about" },
+              { label: "SkillPay business", href: "#services" },
+              { label: "Escrow Protection", href: "#disclaimer" },
+              { label: "Pricing", href: "#pricing" },
+              { label: "Subscriptions", href: "#pricing" },
             ]}
           />
           <FooterColumn
             title="Company"
             links={[
-              "About us",
-              "Press",
-              "Careers",
-              "Blog",
-              "FAQs",
-              "Affiliates and partnerships",
-              "Help centre",
+              { label: "About us", href: "#about" },
+              { label: "Press", href: "#" },
+              { label: "Careers", href: "#" },
+              { label: "Blog", href: "#" },
+              { label: "FAQs", href: "#faq" },
+              { label: "Affiliates & partners", href: "#" },
+              { label: "Help centre", href: "#complaints" },
             ]}
           />
           <FooterColumn
-            title="Support"
+            title="Compliance & Legal"
             links={[
-              "Terms of service",
-              "Privacy policy",
-              "Artisan terms of service",
-              "Cookie policy",
-              "Others",
+              { label: "Terms of service", href: "#terms" },
+              { label: "Privacy policy", href: "#privacy" },
+              { label: "Artisan terms of service", href: "#artisan-terms" },
+              { label: "Cookie policy", href: "#cookies" },
+              { label: "Legal disclaimers", href: "#disclaimer" },
+              { label: "Complaints & dispute policy", href: "#complaints" },
             ]}
           />
           <div className="space-y-4">
@@ -128,30 +144,32 @@ export default function Footer() {
         <div className="mt-14 border-t border-gray-200 pt-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
             <div className="flex items-center gap-4">
-              <img
-                src="/logo.png"
-                alt="SkillPay"
-                className="w-30 rounded-full"
-              />
+              <a href="#home">
+                <img
+                  src="/logo.png"
+                  alt="SkillPay"
+                  className="w-30 rounded-full"
+                />
+              </a>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-10 gap-y-3 text-sm text-gray-500 justify-center md:justify-start">
-              <a className="hover:text-gray-900 transition-colors" href="#">
-                Legal
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-gray-500 justify-center md:justify-start">
+              <a className="hover:text-gray-900 transition-colors" href="#terms">
+                Terms of Service
               </a>
-              <a className="hover:text-gray-900 transition-colors" href="#">
+              <a className="hover:text-gray-900 transition-colors" href="#disclaimer">
+                Legal Disclaimers
+              </a>
+              <a className="hover:text-gray-900 transition-colors" href="#complaints">
                 Complaints
               </a>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-10 gap-y-3 text-sm text-gray-500 justify-center md:justify-end">
-              <a className="hover:text-gray-900 transition-colors" href="#">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-gray-500 justify-center md:justify-end">
+              <a className="hover:text-gray-900 transition-colors" href="#privacy">
                 Privacy policy
               </a>
-              <a className="hover:text-gray-900 transition-colors" href="#">
-                Country site map
-              </a>
-              <a className="hover:text-gray-900 transition-colors" href="#">
+              <a className="hover:text-gray-900 transition-colors" href="#cookies">
                 Cookie Policy
               </a>
             </div>
@@ -165,3 +183,4 @@ export default function Footer() {
     </footer>
   );
 }
+
