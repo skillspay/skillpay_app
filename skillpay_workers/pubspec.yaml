@@ -47,6 +47,13 @@ dependencies:
   file_picker: ^11.0.2
   url_launcher: ^6.3.2
   socket_io_client: ^3.0.2
+  record: ^5.1.2
+  audioplayers: ^6.4.0
+  permission_handler: ^11.3.1
+  path_provider: ^2.1.5
+
+dependency_overrides:
+  record_platform_interface: 1.2.0
 
 dev_dependencies:
   flutter_test:

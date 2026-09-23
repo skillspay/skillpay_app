@@ -3,13 +3,18 @@
 <plist version="1.0">
 <dict>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Skillpay Workers needs access to your photo library to allow you to upload a profile picture and share images of your work.</string>
+	<string>Skillpay Workers needs access to your photo library to upload a profile picture and share images in chat.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Skillpay Workers needs camera access to take photos for your profile or chat.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Skillpay Workers needs microphone access to record voice notes in chat.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>This app requires Face ID to secure your wallet and account details.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Skillpay Workers uses your location to connect you with nearby clients.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Skillpay Workers uses your location to connect you with nearby clients.</string>
+
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

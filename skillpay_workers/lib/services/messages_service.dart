@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'api_client.dart';
+import 'cloudinary_service.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
+
 
 /// Chat service for the Workers app.
 ///
@@ -144,17 +146,13 @@ class MessagesService {
 
   Future<String?> uploadAttachment(File file) async {
     try {
-      final result = await _api.uploadFile(
-        '/storage/chat-attachment',
-        file: file,
-        fieldName: 'file',
-      ) as Map<String, dynamic>;
-      return result['url']?.toString();
-    } on ApiException catch (e) {
-      debugPrint('Attachment upload failed: ${e.message}');
+      return await CloudinaryService.instance.upload(file);
+    } catch (e) {
+      debugPrint('Attachment upload failed: $e');
       return null;
     }
   }
+
 
   // ─── Direct WebSocket Realtime ───────────────────────────────────────────
 
