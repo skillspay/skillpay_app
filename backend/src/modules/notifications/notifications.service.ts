@@ -80,6 +80,23 @@ export class NotificationsService implements OnModuleInit {
               notificationId: notification.id,
               ...(metadata ? { metadata: JSON.stringify(metadata) } : {}),
             },
+            apns: {
+              headers: {
+                'apns-priority': '10',
+                'apns-push-type': 'alert',
+              },
+              payload: {
+                aps: {
+                  alert: {
+                    title,
+                    body,
+                  },
+                  sound: 'default',
+                  badge: 1,
+                  contentAvailable: true,
+                },
+              },
+            },
           });
           this.logger.log(`FCM notification sent to user ${userId}`);
         }

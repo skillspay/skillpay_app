@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'history_chat_screen.dart';
 import '../services/messages_service.dart';
 import '../models/chat_model.dart';
+import '../widgets/chat_skeleton.dart';
 
 class MessagesTab extends StatefulWidget {
   const MessagesTab({super.key});
@@ -139,7 +140,7 @@ class _MessagesTabState extends State<MessagesTab> {
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const ConversationListSkeleton();
     }
     if (_errorMessage != null) {
       return Center(

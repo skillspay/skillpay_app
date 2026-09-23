@@ -78,5 +78,10 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Skillpay Workers requires camera access to take profile photos, capture work sample images, and scan documents for identity verification.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

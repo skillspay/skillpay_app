@@ -87,6 +87,14 @@ class MessagesService {
 
   // ─── Messages ─────────────────────────────────────────────────────────────
 
+  static final Map<String, List<MessageModel>> _cachedMessages = {};
+
+  /// Get locally cached messages if available for instantaneous rendering
+  List<MessageModel>? getCachedMessages(String conversationId) {
+    final cached = _cachedMessages[conversationId];
+    return cached != null ? List.from(cached) : null;
+  }
+
   Future<List<MessageModel>> fetchMessages(
     String conversationId, {
     int limit = 30,
@@ -100,9 +108,13 @@ class MessagesService {
           ...?before != null ? {'before': before} : null,
         },
       ) as List<dynamic>;
-      return data
+      final messages = data
           .map((json) => MessageModel.fromMap(json as Map<String, dynamic>))
           .toList();
+      if (before == null) {
+        _cachedMessages[conversationId] = messages;
+      }
+      return messages;
     } on ApiException catch (e) {
       debugPrint('Error fetching messages: ${e.message}');
       return [];

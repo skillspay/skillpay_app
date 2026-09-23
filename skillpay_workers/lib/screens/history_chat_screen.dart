@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/messages_service.dart';
 import '../models/message_model.dart';
+import '../widgets/chat_skeleton.dart';
 import 'package:intl/intl.dart';
 
 class HistoryChatScreen extends StatefulWidget {
@@ -53,6 +54,15 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
   @override
   void initState() {
     super.initState();
+    // Instant optimistic load from in-memory cache if previously opened
+    final cached = _messagesService.getCachedMessages(widget.conversationId);
+    if (cached != null && cached.isNotEmpty) {
+      final seen = <String>{};
+      final msgs = cached.reversed.toList();
+      _messages = msgs.where((m) => seen.add(m.id)).toList();
+      _isLoading = false;
+    }
+
     _messagesService.getMyPrismaUserId().then((id) {
       if (mounted) {
         setState(() => _myUserId = id);
@@ -394,7 +404,7 @@ class _HistoryChatScreenState extends State<HistoryChatScreen> {
             
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ChatMessagesSkeleton()
                   : _errorMessage != null
                       ? Center(child: Text(_errorMessage!))
                       : ListView.builder(
