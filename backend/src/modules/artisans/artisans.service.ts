@@ -4,7 +4,22 @@ import { RedisService } from '../../common/redis/redis.service';
 import { Prisma, VerificationDocumentType } from '@prisma/client';
 
 const ARTISAN_INCLUDE: Prisma.ArtisanInclude = {
-  user: { select: { id: true, email: true, phone: true } },
+  user: {
+    select: {
+      id: true,
+      email: true,
+      phone: true,
+      addresses: {
+        select: {
+          id: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          isDefault: true,
+        },
+      },
+    },
+  },
   categories: { include: { category: true } },
   verificationDocuments: true,
   posts: { orderBy: { createdAt: 'desc' } },
@@ -114,7 +129,7 @@ export class ArtisansService {
         ...(categoryId
           ? { categories: { some: { categoryId } } }
           : {}),
-        ...(location
+        ...(location && lat == null && lng == null
           ? { basedIn: { contains: location, mode: 'insensitive' } }
           : {}),
         ...(search
@@ -132,13 +147,24 @@ export class ArtisansService {
         _count: { select: { verificationDocuments: true } },
       },
       orderBy: { averageRating: 'desc' },
-      take: limit ? Number(limit) : 30,
+      take: limit ? Number(limit) : 50,
     });
 
-    let results = data.map((artisan) => {
+    let results = data.map((artisan: any) => {
       let distanceKm: number | null = null;
-      if (lat != null && lng != null && artisan.latitude != null && artisan.longitude != null) {
-        const rawDist = this.calculateDistance(lat, lng, artisan.latitude, artisan.longitude);
+      const artLat =
+        artisan.latitude ??
+        artisan.user?.addresses?.find((a: any) => a.isDefault)?.latitude ??
+        artisan.user?.addresses?.[0]?.latitude ??
+        null;
+      const artLng =
+        artisan.longitude ??
+        artisan.user?.addresses?.find((a: any) => a.isDefault)?.longitude ??
+        artisan.user?.addresses?.[0]?.longitude ??
+        null;
+
+      if (lat != null && lng != null && artLat != null && artLng != null) {
+        const rawDist = this.calculateDistance(lat, lng, artLat, artLng);
         distanceKm = Math.round(rawDist * 10) / 10;
       }
       return {
@@ -147,9 +173,21 @@ export class ArtisansService {
       };
     });
 
-    // If radiusKm is specified and coordinates are provided, filter within radius
-    if (lat != null && lng != null && radiusKm != null) {
-      results = results.filter((a) => a.distanceKm != null && a.distanceKm <= radiusKm);
+    // If coordinates or radius are specified, filter within proximity
+    const effectiveRadius = radiusKm ?? (lat != null && lng != null ? 50 : undefined);
+    if (effectiveRadius != null && (lat != null && lng != null)) {
+      results = results.filter((a: any) => {
+        if (a.distanceKm != null) {
+          return a.distanceKm <= effectiveRadius;
+        }
+        // If artisan has no GPS coordinates, check if basedIn matches location query
+        if (location && a.basedIn) {
+          const locParts = location.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean);
+          const basedParts = a.basedIn.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean);
+          return locParts.some((p: string) => basedParts.some((b: string) => b.includes(p) || p.includes(b)));
+        }
+        return false;
+      });
     }
 
     // If GPS coordinates are provided, sort closest first (and with equal distance/nulls by rating)
