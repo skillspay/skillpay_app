@@ -335,3 +335,58 @@ class _PolicyViewerModalState extends State<PolicyViewerModal> {
     );
   }
 }
+
+/// Bottom Terms & Privacy footer for worker auth screens with clickable popups.
+Widget buildWorkerAuthFooter(BuildContext context) {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Text(
+        'By logging in, you agree to SkillPay',
+        style: TextStyle(color: Colors.grey, fontSize: 12),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 4),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GestureDetector(
+            onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.terms),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+              child: Text(
+                'Terms of Service',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+          const Text(
+            ' and ',
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+          GestureDetector(
+            onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.privacy),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+              child: Text(
+                'Privacy Policy.',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+

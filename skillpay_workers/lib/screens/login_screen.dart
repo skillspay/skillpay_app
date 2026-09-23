@@ -3,6 +3,7 @@ import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
 import 'dashboard_screen.dart';
 import '../services/supabase_auth_service.dart';
+import '../widgets/policy_viewer_modal.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -246,26 +247,59 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Spacing to push terms to bottom
                 SizedBox(height: MediaQuery.of(context).size.height * 0.1),
                 
-                // Terms and Policies
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: const TextSpan(
-                    style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
-                    children: [
-                      TextSpan(text: 'By logging in, you agree to SkillPay\n'),
-                      TextSpan(
-                        text: 'Terms of Service',
-                        style: TextStyle(color: Colors.black, decoration: TextDecoration.underline),
-                      ),
-                      TextSpan(text: ' and '),
-                      TextSpan(
-                        text: 'Privacy Policy.',
-                        style: TextStyle(color: Colors.black, decoration: TextDecoration.underline),
-                      ),
-                    ],
-                  ),
+                // Terms and Policies with clickable popups
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'By logging in, you agree to SkillPay',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.terms),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                            child: Text(
+                              'Terms of Service',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Text(
+                          ' and ',
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                        GestureDetector(
+                          onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.privacy),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                            child: Text(
+                              'Privacy Policy.',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
+
               ],
             ),
           ),

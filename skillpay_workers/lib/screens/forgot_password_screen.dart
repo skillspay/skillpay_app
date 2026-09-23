@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'otp_verification_screen.dart';
 import '../services/supabase_auth_service.dart';
+import '../widgets/policy_viewer_modal.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -182,26 +183,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 // Spacing to push terms to bottom
                 SizedBox(height: MediaQuery.of(context).size.height * 0.25),
                 
-                // Terms and Policies
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: const TextSpan(
-                    style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
-                    children: [
-                      TextSpan(text: 'By logging in, you agree to SkillPay\n'),
-                      TextSpan(
-                        text: 'Terms of Service',
-                        style: TextStyle(color: Colors.black, decoration: TextDecoration.underline),
-                      ),
-                      TextSpan(text: ' and '),
-                      TextSpan(
-                        text: 'Privacy Policy.',
-                        style: TextStyle(color: Colors.black, decoration: TextDecoration.underline),
-                      ),
-                    ],
-                  ),
-                ),
+                // Terms and Policies with clickable popups
+                buildWorkerAuthFooter(context),
                 const SizedBox(height: 24),
+
               ],
             ),
           ),
