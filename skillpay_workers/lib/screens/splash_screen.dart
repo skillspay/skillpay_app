@@ -14,56 +14,49 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  StreamSubscription<AuthState>? _authStateSubscription;
-
   @override
   void initState() {
     super.initState();
     _checkSession();
   }
 
-  Future<void> _checkSession() async {
-    // Show splash screen for a briefly
-    await Future.delayed(const Duration(seconds: 2));
-    
-    if (!mounted) return;
-
-    // Listen to auth state to correctly handle delayed session recovery from local storage
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
-      if (!mounted) return;
-      
-      final session = data.session;
-      
-      // If we got a session, go to Dashboard
-      if (session != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
-      } else {
-        // Only redirect to Onboarding if we are sure there's no session
-        if (data.event == AuthChangeEvent.initialSession || data.event == AuthChangeEvent.signedOut) {
-          // Check if it's the very first time opening the app
-          final prefs = await SharedPreferences.getInstance();
-          final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
-          
-          if (hasSeenOnboarding) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-            );
-          } else {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-            );
-          }
-        }
-      }
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage('assets/images/logo.png'), context);
   }
 
-  @override
-  void dispose() {
-    _authStateSubscription?.cancel();
-    super.dispose();
+  Future<void> _checkSession() async {
+    // Run the brief splash display delay (500ms) and SharedPreferences fetch in parallel
+    final results = await Future.wait([
+      Future.delayed(const Duration(milliseconds: 500)),
+      SharedPreferences.getInstance(),
+    ]);
+
+    if (!mounted) return;
+
+    // Check cached session immediately — zero network latency
+    final session = Supabase.instance.client.auth.currentSession;
+
+    if (session != null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      );
+      return;
+    }
+
+    final prefs = results[1] as SharedPreferences;
+    final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+
+    if (hasSeenOnboarding) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+    }
   }
 
   @override

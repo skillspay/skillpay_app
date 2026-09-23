@@ -22,7 +22,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _hasPhotoStatus = false;
   bool _hasBioStatus = false;
   bool _isVerified = false;
-  bool _isLoading = true;
   String? _profilePhotoUrl;
 
   final _profileService = ArtisanProfileService();
@@ -32,6 +31,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _tabs = [
+      HomeTab(isVerified: _isVerified, profilePhotoUrl: _profilePhotoUrl),
+      const JobsTab(),
+      const HistoryTab(),
+      const MessagesTab(),
+      const SettingsTab(),
+    ];
     _checkProfileStatus();
   }
 
@@ -60,7 +66,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
           _tabs = [
             HomeTab(isVerified: _isVerified, profilePhotoUrl: _profilePhotoUrl),
             const JobsTab(),
@@ -103,9 +108,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       extendBody: true,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.black))
-          : _tabs[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _tabs,
+      ),
       bottomNavigationBar: SafeArea(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
