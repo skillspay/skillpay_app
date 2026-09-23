@@ -15,6 +15,7 @@ class JobModel {
   final List<String> images;
   final double? latitude;
   final double? longitude;
+  final double? distanceKm;
   final DateTime createdAt;
 
   // Homeowner info (embedded by NestJS)
@@ -37,6 +38,7 @@ class JobModel {
     required this.images,
     this.latitude,
     this.longitude,
+    this.distanceKm,
     required this.createdAt,
     this.homeownerName,
     this.homeownerPhoto,
@@ -63,6 +65,9 @@ class JobModel {
       images: imagesList is List ? List<String>.from(imagesList.whereType<String>()) : [],
       latitude: double.tryParse(map['latitude']?.toString() ?? ''),
       longitude: double.tryParse(map['longitude']?.toString() ?? ''),
+      distanceKm: map['distanceKm'] != null
+          ? double.tryParse(map['distanceKm'].toString())
+          : (map['distance_km'] != null ? double.tryParse(map['distance_km'].toString()) : null),
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),

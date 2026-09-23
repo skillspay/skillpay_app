@@ -10,15 +10,19 @@ class JobsService {
     String? categoryId,
     double? latitude,
     double? longitude,
+    double? radiusKm,
+    String? location,
     int limit = 20,
   }) async {
     try {
       final query = <String, dynamic>{
         'status': 'PUBLISHED',
         'limit': limit,
-        if (categoryId != null) 'categoryId': categoryId,
+        if (categoryId != null && categoryId.isNotEmpty) 'categoryId': categoryId,
         if (latitude != null) 'lat': latitude,
         if (longitude != null) 'lng': longitude,
+        if (radiusKm != null) 'radiusKm': radiusKm,
+        if (location != null && location.isNotEmpty) 'location': location,
       };
       final data = await _api.get('/jobs', query: query) as List<dynamic>;
       return data

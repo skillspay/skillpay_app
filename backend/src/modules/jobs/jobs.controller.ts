@@ -38,8 +38,18 @@ export class JobsController {
     @Query('limit') limit?: number,
     @Query('lat') lat?: number,
     @Query('lng') lng?: number,
+    @Query('radiusKm') radiusKm?: number,
+    @Query('location') location?: string,
   ) {
-    return this.jobsService.findAll(user.id, { status, categoryId, limit, lat, lng });
+    return this.jobsService.findAll(user.id, {
+      status,
+      categoryId,
+      limit,
+      lat: lat ? Number(lat) : undefined,
+      lng: lng ? Number(lng) : undefined,
+      radiusKm: radiusKm ? Number(radiusKm) : undefined,
+      location,
+    });
   }
 
   // Flutter (customer): GET /jobs/:id

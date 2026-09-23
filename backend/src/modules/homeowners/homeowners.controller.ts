@@ -94,6 +94,16 @@ export class HomeownersController {
     return this.homeownersService.addAddress(user.id, body);
   }
 
+  // Flutter: PATCH /homeowners/addresses/:id/set-default
+  @Patch('addresses/:id/set-default')
+  @ApiOperation({ summary: 'Set address as default' })
+  setDefault(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.homeownersService.setDefaultAddress(user.id, id);
+  }
+
   // Flutter: PATCH /homeowners/addresses/:id
   @Patch('addresses/:id')
   @ApiOperation({ summary: 'Update a saved address' })
@@ -110,16 +120,6 @@ export class HomeownersController {
     },
   ) {
     return this.homeownersService.updateAddress(user.id, id, body);
-  }
-
-  // Flutter: PATCH /homeowners/addresses/:id/set-default
-  @Patch('addresses/:id/set-default')
-  @ApiOperation({ summary: 'Set address as default' })
-  setDefault(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
-    return this.homeownersService.setDefaultAddress(user.id, id);
   }
 
   // Flutter: DELETE /homeowners/addresses/:id

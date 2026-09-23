@@ -49,9 +49,11 @@ export class JobsService {
       limit?: number;
       lat?: number;
       lng?: number;
+      radiusKm?: number;
+      location?: string;
     }
   ) {
-    const { status, categoryId, limit } = filters;
+    const { status, categoryId, limit, lat, lng, radiusKm, location } = filters;
 
     const artisan = await this.prisma.artisan.findUnique({
       where: { userId },
@@ -61,26 +63,52 @@ export class JobsService {
       where: {
         status: (status as any) ?? 'PUBLISHED',
         ...(categoryId ? { categoryId } : {}),
+        ...(location
+          ? { address: { contains: location, mode: 'insensitive' } }
+          : {}),
       },
       include: JOB_INCLUDE,
       orderBy: { createdAt: 'desc' },
       take: limit ? Number(limit) : 50,
     });
 
-    if (artisan && artisan.latitude && artisan.longitude) {
-      jobs = jobs.filter((job) => {
-        if (!job.latitude || !job.longitude) return true;
-        const distance = this.aiMatchService.calculateDistance(
-          artisan.latitude!,
-          artisan.longitude!,
+    const refLat = lat ?? artisan?.latitude ?? undefined;
+    const refLng = lng ?? artisan?.longitude ?? undefined;
+
+    let formattedJobs = jobs.map((job) => {
+      let distanceKm: number | null = null;
+      if (refLat != null && refLng != null && job.latitude != null && job.longitude != null) {
+        const rawDist = this.aiMatchService.calculateDistance(
+          refLat,
+          refLng,
           job.latitude,
           job.longitude
         );
-        return distance <= 30; // 30km radius match
+        distanceKm = Math.round(rawDist * 10) / 10;
+      }
+      return this._formatJob(job, distanceKm);
+    });
+
+    // If radiusKm is specified and we have a reference location, filter
+    if (refLat != null && refLng != null && radiusKm != null) {
+      formattedJobs = formattedJobs.filter(
+        (job) => job.distanceKm != null && job.distanceKm <= radiusKm
+      );
+    }
+
+    // Sort by proximity if we have reference coordinates
+    if (refLat != null && refLng != null) {
+      formattedJobs.sort((a, b) => {
+        if (a.distanceKm != null && b.distanceKm != null) {
+          return a.distanceKm - b.distanceKm;
+        }
+        if (a.distanceKm != null) return -1;
+        if (b.distanceKm != null) return 1;
+        return 0;
       });
     }
 
-    return jobs.map((job) => this._formatJob(job));
+    return formattedJobs;
   }
 
   // ─── Single job ───────────────────────────────────────────────────────────
@@ -229,10 +257,11 @@ export class JobsService {
 
   // ─── Helper: flatten _count into applicationCount ─────────────────────────
 
-  private _formatJob(job: any) {
+  private _formatJob(job: any, distanceKm?: number | null) {
     const { _count, ...rest } = job;
     return {
       ...rest,
+      distanceKm: distanceKm ?? null,
       preferredDate: job.timeline ?? job.preferredDate,
       applicationCount: _count?.applications ?? 0,
     };

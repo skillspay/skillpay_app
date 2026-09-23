@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/jobs_service.dart';
+import '../services/artisan_profile_service.dart';
+import '../services/location_service.dart';
 import '../models/job_model.dart';
 import '../models/booking_model.dart';
 import '../services/bookings_service.dart';
@@ -21,12 +23,39 @@ class _JobsTabState extends State<JobsTab> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  // Category filter
+  List<Map<String, dynamic>> _categories = [];
+  String? _selectedCategoryId;
+
+  // Near Me / Location filter
+  bool _nearMeActive = false;
+  bool _isLocating = false;
+  double? _userLat;
+  double? _userLng;
+  String? _userLocationLabel;
+
+  // Search
+  final _searchCtrl = TextEditingController();
+
   final _jobsService = JobsService();
+  final _profileService = ArtisanProfileService();
 
   @override
   void initState() {
     super.initState();
     _fetchJobs();
+    _loadCategories();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    final cats = await _profileService.fetchCategories();
+    if (mounted) setState(() => _categories = cats);
   }
 
   Future<void> _fetchJobs() async {
@@ -36,10 +65,15 @@ class _JobsTabState extends State<JobsTab> {
     });
 
     try {
-      final available = await _jobsService.fetchAvailableJobs();
+      final available = await _jobsService.fetchAvailableJobs(
+        categoryId: _selectedCategoryId,
+        latitude: _nearMeActive ? _userLat : null,
+        longitude: _nearMeActive ? _userLng : null,
+        radiusKm: _nearMeActive ? 30 : null,
+      );
       final bookings = await BookingsService().fetchMyBookings();
       final history = await BookingsService().fetchMyHistory();
-      
+
       if (mounted) {
         setState(() {
           _availableJobs = available;
@@ -53,11 +87,58 @@ class _JobsTabState extends State<JobsTab> {
     }
   }
 
+  Future<void> _toggleNearMe() async {
+    if (_nearMeActive) {
+      setState(() {
+        _nearMeActive = false;
+        _userLat = null;
+        _userLng = null;
+        _userLocationLabel = null;
+      });
+      _fetchJobs();
+      return;
+    }
+
+    setState(() => _isLocating = true);
+    try {
+      final pos = await LocationService.instance.getCurrentLocation();
+      final label = await LocationService.instance.getReadableAddress(pos.latitude, pos.longitude);
+      if (mounted) {
+        setState(() {
+          _userLat = pos.latitude;
+          _userLng = pos.longitude;
+          _userLocationLabel = label;
+          _nearMeActive = true;
+        });
+        _fetchJobs();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📍 Showing jobs near $label'),
+            backgroundColor: const Color(0xFF1E88E5),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not get GPS location: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLocating = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Column(
         children: [
+          // Header
           const Padding(
             padding: EdgeInsets.all(24.0),
             child: Row(
@@ -81,8 +162,11 @@ class _JobsTabState extends State<JobsTab> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey[200]!),
               ),
-              child: const TextField(
-                decoration: InputDecoration(
+              child: TextField(
+                controller: _searchCtrl,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _fetchJobs(),
+                decoration: const InputDecoration(
                   icon: Icon(Icons.search, color: Colors.grey),
                   hintText: 'Search for jobs',
                   hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
@@ -92,7 +176,60 @@ class _JobsTabState extends State<JobsTab> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 14),
+
+          // Filter Chips: Near Me + All + Categories
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              children: [
+                // Near Me chip
+                _buildFilterChip(
+                  label: _nearMeActive
+                      ? (_userLocationLabel != null ? 'Near: $_userLocationLabel' : 'Near Me')
+                      : 'Near Me',
+                  isSelected: _nearMeActive,
+                  isLoading: _isLocating,
+                  icon: _nearMeActive ? Icons.near_me : Icons.near_me_outlined,
+                  accentColor: const Color(0xFF1E88E5),
+                  onTap: _toggleNearMe,
+                ),
+                const SizedBox(width: 8),
+                // All categories chip
+                _buildFilterChip(
+                  label: 'All Jobs',
+                  isSelected: _selectedCategoryId == null,
+                  onTap: () {
+                    setState(() => _selectedCategoryId = null);
+                    _fetchJobs();
+                  },
+                ),
+                const SizedBox(width: 8),
+                // Dynamic category chips
+                ..._categories.map((cat) {
+                  final catId = cat['id'] as String;
+                  final catName = cat['name'] as String? ?? 'Unknown';
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _buildFilterChip(
+                      label: catName,
+                      isSelected: _selectedCategoryId == catId,
+                      onTap: () {
+                        setState(() {
+                          _selectedCategoryId = _selectedCategoryId == catId ? null : catId;
+                        });
+                        _fetchJobs();
+                      },
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
 
           // Tab Bar
           Padding(
@@ -125,20 +262,88 @@ class _JobsTabState extends State<JobsTab> {
                           ],
                         ),
                       )
-                    : _selectedTabIndex == 0 
-                      ? _buildAvailableJobsList()
-                      : _buildRecentJobsList(),
+                    : _selectedTabIndex == 0
+                        ? _buildAvailableJobsList()
+                        : _buildRecentJobsList(),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    bool isLoading = false,
+    IconData? icon,
+    Color accentColor = Colors.black,
+    required VoidCallback onTap,
+  }) {
+    final bg = isSelected ? accentColor : const Color(0xFFF0F0F0);
+    final fg = isSelected ? Colors.white : Colors.black87;
+
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLoading)
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: fg,
+                ),
+              )
+            else if (icon != null)
+              Icon(icon, size: 13, color: fg),
+            if (icon != null || isLoading) const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: fg,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (isSelected && !isLoading) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.close_rounded, size: 12, color: fg),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAvailableJobsList() {
     if (_availableJobs.isEmpty) {
-      return const Center(
-        child: Text('No jobs available at the moment.',
-            style: TextStyle(color: Colors.grey)));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.work_off_outlined, size: 48, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text(
+              _nearMeActive
+                  ? 'No jobs found near your location.\nTry expanding the search radius.'
+                  : 'No jobs available at the moment.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ],
+        ),
+      );
     }
     return RefreshIndicator(
       onRefresh: _fetchJobs,
@@ -165,7 +370,8 @@ class _JobsTabState extends State<JobsTab> {
         padding: const EdgeInsets.symmetric(
             horizontal: 24.0, vertical: 8.0),
         itemCount: _recentBookings.length,
-        separatorBuilder: (_, __) => const Divider(color: Color(0xFFEEEEEE), height: 1),
+        separatorBuilder: (_, __) =>
+            const Divider(color: Color(0xFFEEEEEE), height: 1),
         itemBuilder: (context, index) =>
             _buildBookingItem(context, _recentBookings[index]),
       ),
@@ -209,13 +415,45 @@ class _JobsTabState extends State<JobsTab> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(job.title,
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold)),
+          // Title + distance badge
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(job.title,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+              if (job.distanceKm != null)
+                Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E88E5).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '📍 ${job.distanceKm!.toStringAsFixed(1)} km',
+                    style: const TextStyle(
+                      color: Color(0xFF1E88E5),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 8),
           Row(
             children: [

@@ -99,11 +99,12 @@ export class ArtisansService {
     radiusKm?: number;
     limit?: number;
     search?: string;
+    location?: string;
   }) {
-    const { categoryId, limit, search } = filters;
+    const { categoryId, limit, search, lat, lng, radiusKm, location } = filters;
 
     // Build a deterministic cache key from the filter params
-    const cacheKey = `artisans:nearby:${categoryId ?? ''}:${search ?? ''}:${limit ?? 20}`;
+    const cacheKey = `artisans:nearby:${categoryId ?? ''}:${search ?? ''}:${location ?? ''}:${lat ?? ''}:${lng ?? ''}:${radiusKm ?? ''}:${limit ?? 20}`;
     const cached = await this.redis.get<any[]>(cacheKey);
     if (cached) return cached;
 
@@ -112,6 +113,9 @@ export class ArtisansService {
         availabilityStatus: 'AVAILABLE',
         ...(categoryId
           ? { categories: { some: { categoryId } } }
+          : {}),
+        ...(location
+          ? { basedIn: { contains: location, mode: 'insensitive' } }
           : {}),
         ...(search
           ? {
@@ -128,10 +132,54 @@ export class ArtisansService {
         _count: { select: { verificationDocuments: true } },
       },
       orderBy: { averageRating: 'desc' },
-      take: limit ? Number(limit) : 20,
+      take: limit ? Number(limit) : 30,
     });
-    await this.redis.set(cacheKey, data, NEARBY_TTL);
-    return data;
+
+    let results = data.map((artisan) => {
+      let distanceKm: number | null = null;
+      if (lat != null && lng != null && artisan.latitude != null && artisan.longitude != null) {
+        const rawDist = this.calculateDistance(lat, lng, artisan.latitude, artisan.longitude);
+        distanceKm = Math.round(rawDist * 10) / 10;
+      }
+      return {
+        ...artisan,
+        distanceKm,
+      };
+    });
+
+    // If radiusKm is specified and coordinates are provided, filter within radius
+    if (lat != null && lng != null && radiusKm != null) {
+      results = results.filter((a) => a.distanceKm != null && a.distanceKm <= radiusKm);
+    }
+
+    // If GPS coordinates are provided, sort closest first (and with equal distance/nulls by rating)
+    if (lat != null && lng != null) {
+      results.sort((a, b) => {
+        if (a.distanceKm != null && b.distanceKm != null) {
+          return a.distanceKm - b.distanceKm;
+        }
+        if (a.distanceKm != null) return -1;
+        if (b.distanceKm != null) return 1;
+        return (b.averageRating ?? 0) - (a.averageRating ?? 0);
+      });
+    }
+
+    await this.redis.set(cacheKey, results, NEARBY_TTL);
+    return results;
+  }
+
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   // ─── Single artisan public profile ───────────────────────────────────────

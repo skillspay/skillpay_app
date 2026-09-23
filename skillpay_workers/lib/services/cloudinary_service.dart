@@ -55,9 +55,9 @@ class CloudinaryService {
       if (url != null && url.isNotEmpty) return url;
       throw Exception('Cloudinary returned no URL');
     } else {
-      debugPrint('[CloudinaryService] Error: \${response.body}');
+      debugPrint('[CloudinaryService] Error: ${response.body}');
       throw Exception(
-        'Cloudinary upload failed (\${response.statusCode})',
+        'Cloudinary upload failed (${response.statusCode})',
       );
     }
   }

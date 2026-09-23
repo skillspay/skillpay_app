@@ -43,15 +43,27 @@ export class ArtisansController {
     return this.artisansService.getProfile(user.id);
   }
 
-  // Flutter (customer): GET /artisans  (search)
+  // Flutter (customer): GET /artisans  (search & proximity)
   @Get()
-  @ApiOperation({ summary: 'Search artisans' })
+  @ApiOperation({ summary: 'Search artisans with optional category and location/proximity' })
   search(
     @Query('search') search?: string,
     @Query('categoryId') categoryId?: string,
     @Query('limit') limit?: number,
+    @Query('lat') lat?: number,
+    @Query('lng') lng?: number,
+    @Query('radiusKm') radiusKm?: number,
+    @Query('location') location?: string,
   ) {
-    return this.artisansService.findNearby({ search, categoryId, limit });
+    return this.artisansService.findNearby({
+      search,
+      categoryId,
+      limit,
+      lat: lat ? Number(lat) : undefined,
+      lng: lng ? Number(lng) : undefined,
+      radiusKm: radiusKm ? Number(radiusKm) : undefined,
+      location,
+    });
   }
 
   // Flutter (customer): GET /artisans/:id
