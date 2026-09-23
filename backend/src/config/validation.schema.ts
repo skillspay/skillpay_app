@@ -46,4 +46,7 @@ export const validationSchema = Joi.object({
   // Admin seed
   ADMIN_EMAIL: Joi.string().email().optional(),
   ADMIN_PASSWORD: Joi.string().min(8).optional(),
+
+  // Redis
+  REDIS_URL: Joi.string().optional(),
 });

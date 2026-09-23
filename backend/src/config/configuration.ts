@@ -52,4 +52,8 @@ export default () => ({
     password: process.env.SMTP_PASSWORD,
     from: process.env.SMTP_FROM || '"Skillpay" <hello@skillpay.com>',
   },
+
+  redis: {
+    url: process.env.REDIS_URL,
+  },
 });

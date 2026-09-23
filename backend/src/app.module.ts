@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './common/redis/redis.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -27,6 +28,7 @@ import { SettingsModule } from './modules/settings/settings.module';
   imports: [
     ConfigModule,
     PrismaModule,
+    RedisModule,
     AuthModule,
     UsersModule,
     HomeownersModule,

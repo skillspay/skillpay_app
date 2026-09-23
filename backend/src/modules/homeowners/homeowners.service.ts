@@ -4,14 +4,26 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RedisService } from '../../common/redis/redis.service';
+
+const PROFILE_TTL = 120; // 2 minutes
 
 @Injectable()
 export class HomeownersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
+
+  private profileKey(userId: string) { return `homeowner:profile:${userId}`; }
 
   // ─── Get or auto-create profile ──────────────────────────────────────────
 
   async getProfile(userId: string) {
+    const cacheKey = this.profileKey(userId);
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
     let profile = await this.prisma.homeowner.findUnique({
       where: { userId },
       include: {
@@ -55,6 +67,7 @@ export class HomeownersService {
       });
     }
 
+    await this.redis.set(cacheKey, profile, PROFILE_TTL);
     return profile;
   }
 
@@ -120,6 +133,8 @@ export class HomeownersService {
       }
     }
 
+    // Invalidate cached profile so next read is fresh
+    await this.redis.del(this.profileKey(userId));
     return homeowner;
   }
 
@@ -152,7 +167,7 @@ export class HomeownersService {
       });
     }
 
-    return this.prisma.homeowner.update({
+    const result = await this.prisma.homeowner.update({
       where: { userId },
       data: {
         ...homeownerRest,
@@ -169,6 +184,9 @@ export class HomeownersService {
         },
       },
     });
+    // Invalidate profile cache
+    await this.redis.del(this.profileKey(userId));
+    return result;
   }
 
   // ─── Addresses ────────────────────────────────────────────────────────────

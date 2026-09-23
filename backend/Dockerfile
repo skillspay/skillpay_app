@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/a
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY prisma ./prisma/
 RUN npx prisma generate
