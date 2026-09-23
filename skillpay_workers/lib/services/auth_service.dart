@@ -107,6 +107,29 @@ class AuthService {
     }
   }
 
+  // ─── Deactivate / Delete Account ──────────────────────────────────────────
+
+  Future<void> deactivateAccount() async {
+    // 1. Call backend API to mark UserStatus.INACTIVE in Postgres
+    try {
+      await _api.post('/auth/deactivate');
+    } catch (_) {
+      // Backend may be offline or unreachable, proceed with local signout
+    }
+
+    // 2. Mark Supabase user metadata as deactivated
+    try {
+      await _supabase.auth.updateUser(
+        UserAttributes(
+          data: {'is_deactivated': true},
+        ),
+      );
+    } catch (_) {}
+
+    // 3. Sign out of Supabase
+    await _supabase.auth.signOut();
+  }
+
   // ─── Password reset ───────────────────────────────────────────────────────
 
   Future<void> sendPasswordResetEmail(String email) async {

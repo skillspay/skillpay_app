@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RegisterDto, UpdateFcmTokenDto } from './dto/register.dto';
-import { Role } from '@prisma/client';
+import { Role, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -112,5 +112,16 @@ export class AuthService {
 
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  /**
+   * Deactivates the user account (sets status to INACTIVE).
+   */
+  async deactivate(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: UserStatus.INACTIVE },
+    });
+    this.logger.log(`User account deactivated: ${userId}`);
   }
 }

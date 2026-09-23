@@ -100,6 +100,18 @@ export class AuthController {
     return { message: 'FCM token updated' };
   }
 
+  /**
+   * POST /auth/deactivate
+   * Deactivates current user account (sets status to INACTIVE).
+   */
+  @Post('deactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Deactivate current user account' })
+  async deactivate(@CurrentUser() user: AuthenticatedUser) {
+    await this.authService.deactivate(user.id);
+    return { message: 'Account deactivated successfully' };
+  }
+
   // ─── Helper ──────────────────────────────────────────────────────────────
 
   private extractToken(req: Request): string | null {

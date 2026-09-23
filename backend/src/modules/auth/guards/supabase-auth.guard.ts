@@ -82,9 +82,13 @@ export class SupabaseAuthGuard implements CanActivate {
       );
     }
 
-    if (dbUser.status === 'BANNED' || dbUser.status === 'SUSPENDED') {
+    if (
+      dbUser.status === 'BANNED' ||
+      dbUser.status === 'SUSPENDED' ||
+      dbUser.status === 'INACTIVE'
+    ) {
       throw new UnauthorizedException(
-        `Account is ${dbUser.status.toLowerCase()}. Contact support.`,
+        `Account is ${dbUser.status.toLowerCase()}. Contact support to reactivate.`,
       );
     }
 
